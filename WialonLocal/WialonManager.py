@@ -2,10 +2,7 @@ import json
 from http.client import responses
 import requests
 from oauthlib.uri_validate import query
-
 from WialonLocal.WialonAuth import login
-
-
 class WialonManager:
 
     def __init__(self, base_url,token):
@@ -171,6 +168,12 @@ class WialonManager:
         return sensors_map
 
     def __find_aflds_property(self,data,key_property):
+        """
+        Дізнаємось хто власник об'єкта, якщо це вказано в адміністративному полі об'єкта. Пошук за ключем
+        :param data: об'єкт
+        :param key_property: ключ пошуку в адміністративних полях
+        :return: string
+        """
         aflds = data.get("item", {}).get("aflds", {})
         result = {}
 
