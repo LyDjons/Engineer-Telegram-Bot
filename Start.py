@@ -3,7 +3,6 @@ from config.config import TELEGRAM_TOKEN, WIALON_URL
 from config.config import WIALON_TOKEN
 from telebot import types
 from WialonLocal.WialonManager import WialonManager
-
 import telebot
 import json
 
@@ -112,7 +111,6 @@ def cluster_handler(call):
     #тут має щось запуститись
 
     # Удаляем состояние после выбора
-
     try:
         session = WialonManager(WIALON_URL, WIALON_TOKEN)
         print(session._get_info())
@@ -123,7 +121,6 @@ def cluster_handler(call):
 
     except Exception as e:
         print(f"Сталася помилка: {e}")
-
 
     user_state.pop(user_id, None)
     print(user_state)
@@ -175,7 +172,7 @@ def generate_answer(category, cluster):
 
 def wait_for_file_BISensor(message):
     """
-       \Функція обробки тарувальної таблиці для бітрек дутів від Bitrek
+       Функція обробки тарувальної таблиці для бітрек дутів від Bitrek
        1. Перевірка на файл.xls
        2. Завантаження файлу в директорію
        3. Відкриття файлу та отримання файл.csv для Wialon Local
@@ -222,7 +219,6 @@ def wait_for_file_DU02(message):
        2. Завантаження файлу, отримання таблиці та парсинг інформації
        3. Отримання файл.csv для Wialon Local
        4.Відправка файл.csv в бот з Додатковою інформацією про тарування
-
        :param message: вхідне повідомлення з бота
        :return: None
        """
