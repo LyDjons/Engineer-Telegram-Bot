@@ -5,6 +5,7 @@ from telebot import types
 from WialonLocal.WialonManager import WialonManager
 import telebot
 import json
+from WialonLocal.templates.Templates import LOGISTIC_MESSAGE_STATUS
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 # Словник для збереження станів Users
@@ -118,6 +119,7 @@ def cluster_handler(call):
 
         #print(f"json = {session._get_json_str(json)}")
         bot.send_message(call.message.chat.id, f"Я виконав запит {generate_answer(category,cluster)}")
+        bot.send_message(call.message.chat.id, LOGISTIC_MESSAGE_STATUS)
 
     except Exception as e:
         print(f"Сталася помилка: {e}")
