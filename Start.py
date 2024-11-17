@@ -107,7 +107,10 @@ def cluster_handler(call):
     # Если состояние есть, выполняем действие в зависимости от выбора
     category = user_state[user_id]['logistic_category']
     cluster = call.data
-    bot.send_message(call.message.chat.id, f"Ви вибрали {category} => {cluster}\nЯ роблю аналіз, дочекайтесь його завершення...")
+    print(f"category = {category}")
+    print(f"cluster = {cluster}")
+
+    bot.send_message(call.message.chat.id, f"Ви вибрали:\n {category} => {cluster}\nЯ роблю аналіз, дочекайтесь його завершення...⏳")
     bot.answer_callback_query(call.id)
     #тут має щось запуститись
 
@@ -118,8 +121,50 @@ def cluster_handler(call):
         json = session._create_my_json(generate_answer(category,cluster))
 
         #print(f"json = {session._get_json_str(json)}")
+        item_count = len(json["items"])
+        item_count_chimc = 0
+        item_count_ba = 0
+        item_count_sa = 0
+        item_count_ak = 0
+        item_count_ap = 0
+        item_nobody = 0
+
+        count_rental = 0
+
+        for item in json["items"].values():
+            if "_" in item["nm"]:
+                count_rental += 1
+            if not item.get("property"):
+                item_nobody = item_nobody +1
+            if item.get("property", {}).get("Власність") == "ТОВ ЧІМК":
+                item_count_chimc = item_count_chimc + 1
+            if item.get("property", {}).get("Власність") == "ТОВ Бурат Агро":
+                item_count_ba = item_count_ba + 1
+            if item.get("property", {}).get("Власність") == "ПП Агропрогрес":
+                item_count_ba = item_count_ap + 1
+            if item.get("property", {}).get("Власність") == "ПСП Слобожанщина Агро":
+                item_count_ba = item_count_sa + 1
+            if item.get("property", {}).get("Власність") == "ТОВ Агрокім":
+                item_count_ba = item_count_ak + 1
+
+        message_values = {
+            "cluster_name": generate_answer(category,cluster),
+            "cluster_count": item_count,  #пофіксить вибір
+            "count_cluster": item_count_chimc,
+            "count_rental": count_rental,
+            "other_clusters": item_count_ba + item_count_ak + item_count_sa +item_count_ap, #пофіксить вибір
+            "cluster_chimc": item_count_chimc,
+            "cluster_ba": item_count_ba,
+            "cluster_ak": item_count_ak,
+            "cluster_sa": item_count_sa,
+            "cluster_ap": item_count_ap,
+        }
+
+        formatted_message = LOGISTIC_MESSAGE_STATUS.format(**message_values)
+
         bot.send_message(call.message.chat.id, f"Я виконав запит {generate_answer(category,cluster)}")
-        bot.send_message(call.message.chat.id, LOGISTIC_MESSAGE_STATUS)
+        bot.send_message(call.message.chat.id, formatted_message)
+
 
     except Exception as e:
         print(f"Сталася помилка: {e}")
