@@ -121,14 +121,14 @@ def cluster_handler(call):
         json = session._create_my_json(generate_answer(category,cluster))
 
         #print(f"json = {session._get_json_str(json)}")
-        item_count = len(json["items"])
+        count_objects = len(json["items"])
         item_count_chimc = 0
         item_count_ba = 0
         item_count_sa = 0
         item_count_ak = 0
         item_count_ap = 0
         item_nobody = 0
-
+        count_other_clusters = 0
         count_rental = 0
 
         for item in json["items"].values():
@@ -138,27 +138,41 @@ def cluster_handler(call):
                 item_nobody = item_nobody +1
             if item.get("property", {}).get("Власність") == "ТОВ ЧІМК":
                 item_count_chimc = item_count_chimc + 1
+                if cluster != "ЧІМК": count_other_clusters += 1
             if item.get("property", {}).get("Власність") == "ТОВ Бурат Агро":
                 item_count_ba = item_count_ba + 1
+                if cluster != "БА": count_other_clusters +=1
             if item.get("property", {}).get("Власність") == "ПП Агропрогрес":
-                item_count_ba = item_count_ap + 1
+                item_count_ap = item_count_ap + 1
+                if cluster != "АП": count_other_clusters += 1
             if item.get("property", {}).get("Власність") == "ПСП Слобожанщина Агро":
-                item_count_ba = item_count_sa + 1
+                item_count_sa = item_count_sa + 1
+                if cluster != "СА": count_other_clusters += 1
             if item.get("property", {}).get("Власність") == "ТОВ Агрокім":
-                item_count_ba = item_count_ak + 1
+                item_count_ak = item_count_ak + 1
+                if cluster != "АК": count_other_clusters += 1
+
+        print(cluster)
+        print(f"найм = {count_rental}")
+        print(f"СА = {item_count_sa}")
+        print(f"ЧІМК = {item_count_chimc}")
+        print(f"БА = {item_count_ba}")
+        print(f"АК = {item_count_ak}")
+        print(f"АП = {item_count_ap}")
 
         message_values = {
             "cluster_name": generate_answer(category,cluster),
-            "cluster_count": item_count,  #пофіксить вибір
+            "cluster_count": count_objects,  #пофіксить вибір
             "count_cluster": item_count_chimc,
             "count_rental": count_rental,
-            "other_clusters": item_count_ba + item_count_ak + item_count_sa +item_count_ap, #пофіксить вибір
-            "cluster_chimc": item_count_chimc,
-            "cluster_ba": item_count_ba,
-            "cluster_ak": item_count_ak,
-            "cluster_sa": item_count_sa,
-            "cluster_ap": item_count_ap,
+            "other_clusters": count_other_clusters, #пофіксить вибір
+            "cluster_chimc": item_count_chimc if cluster!="ЧІМК" else 0,
+            "cluster_ba": item_count_ba if cluster!="БА" else 0,
+            "cluster_ak": item_count_ak if cluster!="АК" else 0,
+            "cluster_sa": item_count_sa if cluster!="СА" else 0,
+            "cluster_ap": item_count_ap if cluster!="АП" else 0,
         }
+
 
         formatted_message = LOGISTIC_MESSAGE_STATUS.format(**message_values)
 
