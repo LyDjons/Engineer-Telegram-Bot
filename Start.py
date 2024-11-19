@@ -110,7 +110,11 @@ def cluster_handler(call):
     print(f"category = {category}")
     print(f"cluster = {cluster}")
 
-    bot.send_message(call.message.chat.id, f"Ви вибрали:\n {category} => {cluster}\nЯ роблю аналіз, дочекайтесь його завершення...⏳")
+    bot.send_message(call.message.chat.id, f"Ви вибрали:\n {category} => {cluster}\n\n"
+                                           f"Нажаль, я не розумію чи працює техніка на підприємстві(\n"
+                                           f"Я тільки показую наявність техніки в даній группі.\n\n"
+                                           f"Я роблю аналіз, дочекайтесь його завершення...⏳")
+
     bot.answer_callback_query(call.id)
     #тут має щось запуститись
 
@@ -173,12 +177,10 @@ def cluster_handler(call):
             "cluster_ap": item_count_ap if cluster!="АП" else 0,
         }
 
-
         formatted_message = LOGISTIC_MESSAGE_STATUS.format(**message_values)
 
         bot.send_message(call.message.chat.id, f"Я виконав запит {generate_answer(category,cluster)}")
         bot.send_message(call.message.chat.id, formatted_message)
-
 
     except Exception as e:
         print(f"Сталася помилка: {e}")
