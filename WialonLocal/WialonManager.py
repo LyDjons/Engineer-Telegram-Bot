@@ -144,12 +144,15 @@ class WialonManager:
             "items": {}
         }
 
-        #отримать всі uid що в групі і загнать їх в ліст list_uid
+            #отримать всі uid що в групі і загнать їх в ліст list_uid
         list_uid = self._get_list_uid_for_groupName(gropName)
+
 
         for index, uid in enumerate(list_uid):
             obj = self._get_obj_for_id(uid)  # Получаем объект по UID
+
             sensors = obj.get("item", {}).get("sens", {})
+
             data["items"][str(index + 1)] = {  # Індекси в json починаються з 0, тому добавляємо 1
                 "id": obj.get("item").get("id"),
                 "nm": obj.get("item").get("nm"),
@@ -188,4 +191,6 @@ class WialonManager:
         data = response.json()
         print(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         return self._get_json_str(data)
+
+
 

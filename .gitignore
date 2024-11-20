@@ -3,6 +3,7 @@ WialonLocal/Example
 TestFile.py
 .DS_Store
 .idea/
+unittest
 WialonLocal/Vdovichenko.py
 WialonLocal/WialonAuth.py
 WialonLocal/__pycache__/

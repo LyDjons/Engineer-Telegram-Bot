@@ -1,3 +1,5 @@
+from pyexpat.errors import messages
+
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL
 from config.config import WIALON_TOKEN
@@ -121,7 +123,9 @@ def cluster_handler(call):
     # Удаляем состояние после выбора
     try:
         session = WialonManager(WIALON_URL, WIALON_TOKEN)
+        print(call.message)
         print(session._get_info())
+        print(generate_answer(category,cluster))
         json = session._create_my_json(generate_answer(category,cluster))
 
         #print(f"json = {session._get_json_str(json)}")
@@ -183,7 +187,7 @@ def cluster_handler(call):
         bot.send_message(call.message.chat.id, formatted_message)
 
     except Exception as e:
-        print(f"Сталася помилка: {e}")
+        print(f"Сталася помилка!: {e}")
 
     user_state.pop(user_id, None)
     print(user_state)
