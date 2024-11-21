@@ -1,5 +1,3 @@
-from pyexpat.errors import messages
-
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL
 from config.config import WIALON_TOKEN
@@ -129,6 +127,7 @@ def cluster_handler(call):
         json = session._create_my_json(generate_answer(category,cluster))
 
         #print(f"json = {session._get_json_str(json)}")
+        #рахуємо к-ть обєктів в групі, що налажать різним кластерам
         count_objects = len(json["items"])
         item_count_chimc = 0
         item_count_ba = 0
@@ -160,14 +159,7 @@ def cluster_handler(call):
                 item_count_ak = item_count_ak + 1
                 if cluster != "АК": count_other_clusters += 1
 
-        print(cluster)
-        print(f"найм = {count_rental}")
-        print(f"СА = {item_count_sa}")
-        print(f"ЧІМК = {item_count_chimc}")
-        print(f"БА = {item_count_ba}")
-        print(f"АК = {item_count_ak}")
-        print(f"АП = {item_count_ap}")
-
+        #заповнюємо шаблон
         message_values = {
             "cluster_name": generate_answer(category,cluster),
             "cluster_count": count_objects,  #пофіксить вибір
@@ -189,6 +181,7 @@ def cluster_handler(call):
     except Exception as e:
         print(f"Сталася помилка!: {e}")
 
+    #обнуляєм навігацію користувача (історію його виборів в меню)
     user_state.pop(user_id, None)
     print(user_state)
 
