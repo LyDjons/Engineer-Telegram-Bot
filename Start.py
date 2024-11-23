@@ -1,3 +1,5 @@
+from openpyxl.descriptors import String
+
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL
 from config.config import WIALON_TOKEN
@@ -126,7 +128,6 @@ def cluster_handler(call):
         print(generate_answer(category,cluster))
         json = session._create_my_json(generate_answer(category,cluster))
 
-        #print(f"json = {session._get_json_str(json)}")
         #рахуємо к-ть обєктів в групі, що налажать різним кластерам
         count_objects = len(json["items"])
         item_count_chimc = 0
@@ -219,7 +220,7 @@ def menu_handler(message):
     else:
         bot.send_message(message.chat.id, "Щось пішло не так.Повернення до головного меню", reply_markup=main_menu())
 
-def generate_answer(category, cluster):
+def generate_answer(category: String, cluster: String):
     match (category, cluster):
         case ('Вантажний автотранспорт', 'АП'): return "АП Вантажні автомобілі 1 група"
         case ('Вантажний автотранспорт', 'АК'): return "АК Вантажні автомобілі 1 група"

@@ -1,0 +1,13 @@
+info/git_commands.txt
+WialonLocal/Example
+TestFile.py
+.DS_Store
+.idea/
+tests
+WialonLocal/Vdovichenko.py
+WialonLocal/WialonAuth.py
+WialonLocal/__pycache__/
+WialonSolution.py
+__pycache__/
+config/
+experiment
