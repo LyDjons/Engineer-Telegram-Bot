@@ -59,7 +59,6 @@ def extract_table(file_path):
     print(info)
     return table_data
 
-
 def save_to_file(data, output_file):
     with open(output_file, 'w', encoding='windows-1251') as file:
         file.write("Объем, Число N\n")

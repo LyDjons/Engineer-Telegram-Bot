@@ -1,7 +1,11 @@
 import json
 from http.client import responses
+from typing import List
+
 import requests
 from oauthlib.uri_validate import query
+from openpyxl.descriptors import String
+
 from WialonLocal.WialonAuth import login
 class WialonManager:
 
@@ -71,8 +75,15 @@ class WialonManager:
 
     def _get_list_universal(self,itemsType,propName,propValueMask,sortType,force,flags,_from,to):
         """
-        Універсальна ф-кція пошуку
-        :param mask: маска пошуку об'єктів по назві
+        Універсальна ф-кція пошуку елементів в Wialon Local
+        :param itemsType: тип шуканих елементів (див. список нижче), якщо залишити порожнім, то пошук здійснюватиметься за всіма типами
+        :param propName:ім'я властивості, за якою здійснюватиметься пошук (див. список можливих властивостей нижче):може бути використаний |
+        :param propValueMask: значення властивості: можуть бути використані * | , > < = =
+        :param sortType: ім'я властивості, за якою буде здійснюватися сортування відповіді
+        :param force: 0 - якщо такий пошук уже запитувався, то поверне отриманий результат, 1 - шукатиме заново
+        :param flags: флаг
+        :param _from: від
+        :param to: до
         :return: json
         """
         query = (
@@ -160,7 +171,6 @@ class WialonManager:
                 "property": self.__find_aflds_property(obj, "Власність")
             }
 
-
         return data
 
     def __parse_sensors(self, id_obj,sensors):
@@ -169,6 +179,26 @@ class WialonManager:
         for sensor_id, sensor_data in sensors.items():
             sensors_map[sensor_data.get('n')] = self._get_sensor_value(id_obj).get(sensor_id)
         return sensors_map
+
+    #повертає назву протоколу(обладнання) по id
+    def _device_type(self,id_device : int) -> str :
+
+        query = (
+            'svc=core/get_hw_types&params={'
+            f'"filterType":"id",'
+            f'"filterValue":{id_device},'
+            f'"includeType":0,'
+            f'"ignoreRename":1'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        for device in data:
+            if device['id'] == id_device:
+                return device['name']
+        else:
+            return "Device not found"
 
     def __find_aflds_property(self,data,key_property):
         """
@@ -191,6 +221,7 @@ class WialonManager:
         data = response.json()
         print(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         return self._get_json_str(data)
+
 
 
 
