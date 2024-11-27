@@ -1,4 +1,7 @@
+from time import sleep
+
 from openpyxl.descriptors import String
+from openpyxl.xml.functions import tostring
 
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL
@@ -99,6 +102,14 @@ def engineer_gps_search_menu():
     markup.add(btn3, back)
     return markup
 
+def ask_confirmation(message):
+    # Створення інлайн-клавіатури
+    markup = types.InlineKeyboardMarkup()
+    button_yes = types.InlineKeyboardButton("ТАК", callback_data="yes")
+    button_no = types.InlineKeyboardButton("НІ", callback_data="no")
+    markup.add(button_yes, button_no)
+
+    bot.send_message(message.chat.id, "Продовжити?", reply_markup=markup)
 
 def test_function(message):
     bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
@@ -265,11 +276,24 @@ def find_function(message):
     plate_number = message.text.strip().upper()
     bot.send_message(message.chat.id, f"Ви ввели держ. номер = {plate_number}")
 
-
-    if len(plate_number) == 8 and plate_number[:2].isalpha() and plate_number[2:6].isdigit() and plate_number[
-                                                                                                 6:].isalpha():
+    # тут перевіряємо на правильність держномера
+    if plate_number == "ALL" or (len(plate_number) == 8 and plate_number[:2].isalpha() and plate_number[2:6].isdigit() and plate_number[
+                                                                                                 6:].isalpha()):
         bot.send_message(message.chat.id, f"Держ номер {plate_number} прийнято!")
-        # тут будуть певні дії
+
+
+        session = WialonManager(WIALON_URL, WIALON_TOKEN)
+        print(session._get_info())
+
+
+        my_json = session._get_list_universal("avl_unit",
+                                              "sys_name",
+                                              f"*{plate_number}*",
+                                              "sys_name", 1, 1 + 256 + 1024 + 4096 + 2097152, 0, 10000)
+
+
+        bot.send_message(message.chat.id,f"Знайдено {len(my_json['items'])} об'єктів :")
+
     else:
         bot.send_message(message.chat.id, "Невірний формат. Спробуйте ще раз.")
         # Повторний запит вводу
