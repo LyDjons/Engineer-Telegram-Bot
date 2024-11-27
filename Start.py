@@ -228,6 +228,12 @@ def menu_handler(message):
     elif message.text == 'По держ. номеру':
         bot.send_message(message.chat.id, "Введіть держ номер в форматі СВ1234ЕА:")
         #спочатку відбувається запуск reply_markup а потім текст_мессендж
+        bot.register_next_step_handler(message, find_function)
+
+
+    elif message.text in ['Монтаж', 'Демонтаж', 'Заміна SIM', 'По EMEI', 'По SIM']:
+        bot.send_message(message.chat.id, "В процесі розробки")
+
     elif message.text == 'Ребут':
         bot.send_message(message.chat.id, "Колись зроблюю.")
     elif message.text == 'ДУ-02 => Wialon.cvs':
@@ -248,6 +254,26 @@ def menu_handler(message):
 
     else:
         bot.send_message(message.chat.id, "Щось пішло не так.Повернення до головного меню", reply_markup=main_menu())
+
+
+def find_function(message):
+
+    if message.text == "<-Назад": engineer_gps_menu()
+    if message.text in ["По EMEI", "По SIM", "По держ. номеру"]:
+        bot.send_message(message.chat.id, "Ви не ввели держ. номер вручну!\nВиберіть знову критерій пошуку.")
+        return
+    plate_number = message.text.strip().upper()
+    bot.send_message(message.chat.id, f"Ви ввели держ. номер = {plate_number}")
+
+
+    if len(plate_number) == 8 and plate_number[:2].isalpha() and plate_number[2:6].isdigit() and plate_number[
+                                                                                                 6:].isalpha():
+        bot.send_message(message.chat.id, f"Держ номер {plate_number} прийнято!")
+        # тут будуть певні дії
+    else:
+        bot.send_message(message.chat.id, "Невірний формат. Спробуйте ще раз.")
+        # Повторний запит вводу
+        bot.register_next_step_handler(message, find_function)
 
 
 def generate_answer(category: String, cluster: String):
