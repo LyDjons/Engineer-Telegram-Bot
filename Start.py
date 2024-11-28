@@ -112,7 +112,6 @@ def ask_confirmation(message, count:int):
     bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. Продовжити?", reply_markup=markup)
 
 
-
 def test_function(message):
     bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
 
@@ -292,7 +291,8 @@ def menu_handler(message):
 
 def find_function(message):
 
-    if message.text == "<-Назад": engineer_gps_menu()
+    if message.text == "<-Назад":
+        bot.send_message(message.chat.id, "Повернення до меню", reply_markup=engineer_gps_menu())
     if message.text in ["По EMEI", "По SIM", "По держ. номеру"]:
         bot.send_message(message.chat.id, "Ви не ввели держ. номер вручну!\nВиберіть знову критерій пошуку.")
         return
@@ -324,9 +324,8 @@ def find_function(message):
 
 
     else:
-        bot.send_message(message.chat.id, "Невірний формат. Спробуйте ще раз.",reply_markup=engineer_gps_menu())
-        # Повторний запит вводу
-        bot.register_next_step_handler(message, find_function)
+        bot.send_message(message.chat.id, "Невірний формат." ,reply_markup=engineer_gps_search_menu())
+
 
 
 def generate_answer(category: String, cluster: String):
