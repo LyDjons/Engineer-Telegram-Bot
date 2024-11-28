@@ -111,6 +111,8 @@ def ask_confirmation(message, count:int):
 
     bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. Продовжити?", reply_markup=markup)
 
+
+
 def test_function(message):
     bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
 
@@ -125,13 +127,20 @@ def start(message):
 def handle_callback(call):
     # Відповідно до вибору виконуються дії
     user_id = call.from_user.id
-    print(f'call_id = {user_id} json = {user_state[user_id]}')
     if call.data == "yes" and user_state[user_id].get("wialon_json"):
-        bot.send_message(call.message.chat.id, f"```\n{user_state[user_id].get("wialon_json")}\n```", parse_mode="MarkdownV2")
+        #bot.send_message(call.message.chat.id, f"```\n{user_state[user_id].get("wialon_json")}\n```", parse_mode="MarkdownV2")
 
+        for i in user_state[user_id].get("wialon_json"):
+            bot.send_message(call.message.chat.id, f"```\n{json.dumps(i, indent=4, ensure_ascii=False)}\n```", parse_mode="MarkdownV2")
+
+        #обнуляємо навігацію користувача (історію його виборів в меню)
+        user_state.pop(user_id, None)
+        engineer_gps_search_menu()
     elif call.data == "no":
-        bot.send_message(call.message.chat.id, "Ви обрали НІ!")
-        print("Користувач обрав НІ")
+        # обнуляємо навігацію користувача (історію його виборів в меню)
+        user_state.pop(user_id, None)
+        bot.send_message(call.message.chat.id, "Як забажаєте.",reply_markup=engineer_gps_menu())
+        return
     # Закриваємо "завантаження" кнопки
     bot.answer_callback_query(call.id)
 
@@ -141,7 +150,7 @@ def specific_handler(message):
     user_id = message.from_user.id
     user_state[user_id] = {'logistic_category': message.text}  # Зберігаємо вибрану категорію
     bot.send_message(message.chat.id, "Виберіть кластер:", reply_markup=logistic_inline_menu())
-    print(f"User ID: {user_id} вибрав : {message.text}\nUser State : {user_state}")
+    #print(f"User ID: {user_id} вибрав : {message.text}\nUser State : {user_state}")
 
 
 # оброботчик, для меню, який вибирає кластер
@@ -233,7 +242,7 @@ def cluster_handler(call):
 
     # обнуляєм навігацію користувача (історію його виборів в меню)
     user_state.pop(user_id, None)
-    print(user_state)
+
 
 
 @bot.message_handler(func=lambda message: True)
@@ -305,12 +314,17 @@ def find_function(message):
                                               f"*{plate_number}*",
                                               "sys_name", 1, 1 + 256 + 1024 + 4096 + 2097152, 0, 10000)
 
-
-        user_state[message.from_user.id] = {'wialon_json': my_json}  # Зберігаємо json в словник станів
+        if len(my_json['items']) == 0:
+            bot.send_message(message.chat.id, f"Вибачте, я не знайшов такого держ.номера")
+            main_menu()
+            return
         ask_confirmation(message,len(my_json['items']))
 
+        user_state[message.from_user.id] = {'wialon_json': session._get_special_list_json(my_json)}  # Зберігаємо list_json в словник станів
+
+
     else:
-        bot.send_message(message.chat.id, "Невірний формат. Спробуйте ще раз.")
+        bot.send_message(message.chat.id, "Невірний формат. Спробуйте ще раз.",reply_markup=engineer_gps_menu())
         # Повторний запит вводу
         bot.register_next_step_handler(message, find_function)
 
