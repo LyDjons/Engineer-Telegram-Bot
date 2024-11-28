@@ -102,14 +102,14 @@ def engineer_gps_search_menu():
     markup.add(btn3, back)
     return markup
 
-def ask_confirmation(message):
+def ask_confirmation(message, count:int):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
     button_yes = types.InlineKeyboardButton("ТАК", callback_data="yes")
     button_no = types.InlineKeyboardButton("НІ", callback_data="no")
     markup.add(button_yes, button_no)
 
-    bot.send_message(message.chat.id, "Продовжити?", reply_markup=markup)
+    bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. Продовжити?", reply_markup=markup)
 
 def test_function(message):
     bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
@@ -120,6 +120,20 @@ def start(message):
     if chat_type == "private":
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
 
+
+@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no"])
+def handle_callback(call):
+    # Відповідно до вибору виконуються дії
+    user_id = call.from_user.id
+    print(f'call_id = {user_id} json = {user_state[user_id]}')
+    if call.data == "yes" and user_state[user_id].get("wialon_json"):
+        bot.send_message(call.message.chat.id, f"```\n{user_state[user_id].get("wialon_json")}\n```", parse_mode="MarkdownV2")
+
+    elif call.data == "no":
+        bot.send_message(call.message.chat.id, "Ви обрали НІ!")
+        print("Користувач обрав НІ")
+    # Закриваємо "завантаження" кнопки
+    bot.answer_callback_query(call.id)
 
 # оброботчик, для меню, який першим оброблюэ повідомлення від користувача
 @bot.message_handler(func=lambda message: message.text in ['Вантажний автотранспорт', 'Комбайни'])
@@ -292,7 +306,8 @@ def find_function(message):
                                               "sys_name", 1, 1 + 256 + 1024 + 4096 + 2097152, 0, 10000)
 
 
-        bot.send_message(message.chat.id,f"Знайдено {len(my_json['items'])} об'єктів :")
+        user_state[message.from_user.id] = {'wialon_json': my_json}  # Зберігаємо json в словник станів
+        ask_confirmation(message,len(my_json['items']))
 
     else:
         bot.send_message(message.chat.id, "Невірний формат. Спробуйте ще раз.")
