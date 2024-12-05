@@ -5,7 +5,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 class ExcellLoader:
-    def __init__(self,EXCELL_TOKEN):
+    def __init__(self, EXCELL_TOKEN):
         # Настройка подключения к Google Sheets
         self.SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         self.CREDENTIALS_FILE = "../config/engineergps.json"  # JSON-файл с ключами сервисного аккаунта
@@ -54,6 +54,13 @@ class ExcellLoader:
         return result
 
     def find_emei(self, part_emei: str, json_list:List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Функція пошуку emei в List[Dict[str, Any]]
+        :param part_emei: частина emei по якому будемо виконувати пошук
+        :param json_list: лист з json де будемо шукати
+        :return: повертаэ лист з знайденими json
+        """
+
         if not part_emei.isdigit():
             return []
         search_list = []
