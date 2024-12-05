@@ -1,14 +1,16 @@
 import json
+from operator import index
 from typing import List, Dict, Any
 from config.config import EXCELL_TOKEN
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 class ExcellLoader:
-    def __init__(self, EXCELL_TOKEN):
+    def __init__(self):
         # Настройка подключения к Google Sheets
         self.SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        self.CREDENTIALS_FILE = "../config/engineergps.json"  # JSON-файл с ключами сервисного аккаунта
+        #self.CREDENTIALS_FILE = "../config/engineergps.json"  # JSON-файл с ключами сервисного аккаунта
+        self.CREDENTIALS_FILE = "config/engineergps.json"  # JSON-файл с ключами сервисного аккаунта
         self.SPREADSHEET_ID = EXCELL_TOKEN  # ID таблицы Google Sheets (находится в URL)
         # (часть URL таблицы между /d/ и /edit), а не названием таблицы.
 
@@ -35,7 +37,7 @@ class ExcellLoader:
         # Генерация JSON
         result = []
         try:
-            data = file_excel.read_google_sheet()
+            data = self.read_google_sheet()
 
             headers = None
             for row in data:
@@ -50,6 +52,7 @@ class ExcellLoader:
                         result.append(dict(zip(headers, row)))
 
         except Exception as e:
+
             print(f"Ошибка: {e}")
         return result
 
@@ -75,13 +78,20 @@ class ExcellLoader:
 # Пример использования
 if __name__ == "__main__":
 
-    file_excel = ExcellLoader(EXCELL_TOKEN)
+    example = ExcellLoader()
+    json_list = example.create_base_list()
+    del json_list[0]
+    for index, item in enumerate(json_list):
+        if index > 4:
+            break
+        print(item)
+    """file_excel = ExcellLoader()
     json_list = file_excel.create_base_list()
     # Генерация JSON-строки
     #json_output = json.dumps(json_list, ensure_ascii=False, indent=4)
     #print(json_output)
     result = file_excel.find_emei("71525",json_list)
-    print(json.dumps(result, ensure_ascii=False, indent=4))
+    print(json.dumps(result, ensure_ascii=False, indent=4))"""
 
 
 
