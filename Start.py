@@ -20,7 +20,7 @@ user_state = {}
 # Головнне меню
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton('Сканування')
+    btn1 = types.KeyboardButton('Тест')
     btn2 = types.KeyboardButton('Тарувальна таблиця')
     btn3 = types.KeyboardButton('Інформація про бот 🤖')
     btn4 = types.KeyboardButton('Логістика')
@@ -111,16 +111,15 @@ def ask_confirmation(message, count:int):
 
     bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. Продовжити?", reply_markup=markup)
 
-
 def test_function(message):
     bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
+
 
 @bot.message_handler(commands=['start'])
 def start(message):
     chat_type = message.chat.type
     if chat_type == "private":
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
-
 
 @bot.callback_query_handler(func=lambda call: call.data in ["yes", "no"])
 def handle_callback(call):
@@ -150,7 +149,6 @@ def specific_handler(message):
     user_state[user_id] = {'logistic_category': message.text}  # Зберігаємо вибрану категорію
     bot.send_message(message.chat.id, "Виберіть кластер:", reply_markup=logistic_inline_menu())
     #print(f"User ID: {user_id} вибрав : {message.text}\nUser State : {user_state}")
-
 
 # оброботчик, для меню, який вибирає кластер
 @bot.callback_query_handler(func=lambda call: call.data in ['ЧІМК', 'СА', 'АП', 'БА', 'АК', 'ІМК'])
@@ -242,10 +240,11 @@ def cluster_handler(call):
     # обнуляєм навігацію користувача (історію його виборів в меню)
     user_state.pop(user_id, None)
 
-
-
 @bot.message_handler(func=lambda message: True)
 def menu_handler(message):
+    if message.text == 'Тест':
+        bot.send_message(message.chat.id,  "Тестова ф-я завершилась", reply_markup=test_function(message))
+        return
     if message.text == 'Меню пошуку':
         bot.send_message(message.chat.id, "Виберіть тип пошуку:", reply_markup=engineer_gps_search_menu())
     elif message.text == 'Логістика':
@@ -260,9 +259,7 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "А я вам пакажу откудава готовілось нападєніє")
     elif message.text == 'По держ. номеру':
         bot.send_message(message.chat.id, "Введіть держ номер в форматі СВ1234ЕА:")
-        #спочатку відбувається запуск reply_markup а потім текст_мессендж
         bot.register_next_step_handler(message, find_function)
-
 
     elif message.text in ['Монтаж', 'Демонтаж', 'Заміна SIM', 'По EMEI', 'По SIM']:
         bot.send_message(message.chat.id, "В процесі розробки")
@@ -288,7 +285,6 @@ def menu_handler(message):
     else:
         bot.send_message(message.chat.id, "Щось пішло не так.Повернення до головного меню", reply_markup=main_menu())
 
-
 def find_function(message):
 
     if message.text == "<-Назад":
@@ -300,8 +296,14 @@ def find_function(message):
     bot.send_message(message.chat.id, f"Ви ввели держ. номер = {plate_number}")
 
     # тут перевіряємо на правильність держномера
-    if plate_number == "ALL" or (len(plate_number) == 8 and plate_number[:2].isalpha() and plate_number[2:6].isdigit() and plate_number[
-                                                                                                 6:].isalpha()):
+    if (plate_number == "ALL" or
+            (len(plate_number) == 8 and
+             plate_number[:2].isalpha() and
+             plate_number[2:6].isdigit() and
+             plate_number[6:].isalpha()) or
+            (len(plate_number) == 7 and
+             plate_number[:5].isdigit() and
+             plate_number[5:].isalpha())):
         bot.send_message(message.chat.id, f"Держ номер {plate_number} прийнято!")
 
 
@@ -326,8 +328,6 @@ def find_function(message):
     else:
         bot.send_message(message.chat.id, "Невірний формат." ,reply_markup=engineer_gps_search_menu())
 
-
-
 def generate_answer(category: String, cluster: String):
     match (category, cluster):
         case ('Вантажний автотранспорт', 'АП'):
@@ -344,7 +344,6 @@ def generate_answer(category: String, cluster: String):
             return "ІМК Вантажні автомобілі 1 група"
         case _:
             return None
-
 
 def wait_for_file_BISensor(message):
     """
@@ -386,7 +385,6 @@ def wait_for_file_BISensor(message):
     except Exception as e:
         # Обрабатываем все исключения и отправляем сообщение об ошибке
         bot.send_message(message.chat.id, f"Виникла помилка: {str(e)}. Спробуй ще раз.")
-
 
 # Обробка тарувальної таблиці ДУ-02
 def wait_for_file_DU02(message):
