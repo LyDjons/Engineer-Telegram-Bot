@@ -188,7 +188,7 @@ class WialonManager:
         query = (
             'svc=core/get_hw_types&params={'
             f'"filterType":"id",'
-            f'"filterValue":{id_device},'
+            f'"filterValue":[{id_device}],'
             f'"includeType":0,'
             f'"ignoreRename":1'
             '}'
