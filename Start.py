@@ -99,6 +99,15 @@ def engineer_gps_search_menu():
     markup.add(btn3, back)
     return markup
 
+def installation_gps_menu():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton('Демонтаж по держ. номеру')
+    btn2 = types.KeyboardButton('Демонтаж по EMEI')
+    back = types.KeyboardButton('<-Назад')
+    markup.add(btn1, btn2)
+    markup.add( back)
+    return markup
+
 def ask_confirmation(message, count:int):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
@@ -262,8 +271,11 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "Введіть EMEI повністю або останні 4 цифри")
         bot.register_next_step_handler(message, find_emei_function)
 
-    elif message.text in ['Монтаж', 'Демонтаж', 'Заміна SIM']:
+    elif message.text in ['Монтаж', 'Заміна SIM','Демонтаж по держ. номеру','Демонтаж по EMEI']:
         bot.send_message(message.chat.id, "В процесі розробки")
+
+    elif message.text in 'Демонтаж':
+        bot.send_message(message.chat.id, "Меню демонтажу", reply_markup=installation_gps_menu())
 
     elif message.text =='По SIM':
         bot.send_message(message.chat.id, "Вкажіть номер сімкарти для пошуку:\n Формат пошуку: 0671234567\n")
