@@ -75,6 +75,25 @@ class ExcellLoader:
 
         return search_list
 
+    def find_sim(self, part_sim: str, json_list:List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Функція пошуку sim в List[Dict[str, Any]]
+        :param part_sim: частина sim по якому будемо виконувати пошук
+        :param json_list: лист з json де будемо шукати
+        :return: повертаэ лист з знайденими json
+        """
+
+        if not part_sim.isdigit():
+            return []
+        search_list = []
+        for item in json_list:
+            if item["Телефон"].endswith(part_sim) :
+                search_list.insert(0,item)
+            elif part_sim in item["Телефон"]:
+                search_list.append(item)
+
+        return search_list
+
 # Пример использования
 if __name__ == "__main__":
 

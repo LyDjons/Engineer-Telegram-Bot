@@ -262,8 +262,12 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "Введіть EMEI повністю або останні 4 цифри")
         bot.register_next_step_handler(message, find_emei_function)
 
-    elif message.text in ['Монтаж', 'Демонтаж', 'Заміна SIM', 'По SIM']:
+    elif message.text in ['Монтаж', 'Демонтаж', 'Заміна SIM']:
         bot.send_message(message.chat.id, "В процесі розробки")
+
+    elif message.text =='По SIM':
+        bot.send_message(message.chat.id, "Вкажіть номер сімкарти для пошуку:\n Формат пошуку: 0671234567\n")
+        bot.register_next_step_handler(message, find_sim_function)
 
     elif message.text == 'Ребут':
         bot.send_message(message.chat.id, "Колись зроблюю.")
@@ -287,7 +291,7 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "Щось пішло не так.Повернення до головного меню", reply_markup=main_menu())
 
 def find_emei_function(message):
-
+    #якщо введено число
     if message.text.isdigit():
         bot.send_message(message.chat.id, "Ви ввели число. функція пошуку запущена")
 
@@ -297,14 +301,33 @@ def find_emei_function(message):
         result = file_excel.find_emei(message.text, json_list)
         if len(result) > 5:
             bot.send_message(message.chat.id, f"Я знайшов {len(result)} і виведу тільки 1 результат де\n"
-                                              f" {message.text} в кінці EMEI. "
+                                              f" {message.text} в кінці EMEI."
                                               "\nСпробуйте ввести на одну цифру більше для уточнення")
         result_json = {"Excell":result[:1]}
         bot.send_message(message.chat.id, f"```\n{json.dumps(result_json, indent=4, ensure_ascii=False)}\n```",parse_mode="MarkdownV2")
 
     else:
         bot.send_message(message.chat.id, "Ви ввели не число а якусь беліберду.")
-    pass
+
+
+def find_sim_function(message):
+    # якщо введено число
+    if message.text.isdigit():
+        bot.send_message(message.chat.id, "Ви ввели номер телефону. функція пошуку запущена")
+
+        file_excel = ExcellLoader()
+        json_list = file_excel.create_base_list()
+
+        result = file_excel.find_sim(message.text, json_list)
+        print(result)
+        if len(result) > 5:
+            bot.send_message(message.chat.id, f"Я знайшов {len(result)} і виведу тільки 1 результат де\n"
+                                              f" {message.text} є в полі Sim'."
+                                              "\nСпробуйте ввести на одну цифру більше для уточнення")
+        result_json = {"Excell":result[:1]}
+        bot.send_message(message.chat.id, f"```\n{json.dumps(result_json, indent=4, ensure_ascii=False)}\n```",
+                         parse_mode="MarkdownV2")
+
 
 def find_function(message):
 
