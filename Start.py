@@ -99,7 +99,7 @@ def engineer_gps_search_menu():
     markup.add(btn3, back)
     return markup
 
-def installation_gps_menu():
+def dismantling_gps_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton('Демонтаж по держ. номеру')
     btn2 = types.KeyboardButton('Демонтаж по EMEI')
@@ -275,7 +275,7 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "В процесі розробки")
 
     elif message.text in 'Демонтаж':
-        bot.send_message(message.chat.id, "Меню демонтажу", reply_markup=installation_gps_menu())
+        bot.send_message(message.chat.id, "Меню демонтажу", reply_markup=dismantling_gps_menu())
 
     elif message.text =='По SIM':
         bot.send_message(message.chat.id, "Вкажіть номер сімкарти для пошуку:\n Формат пошуку: 0671234567\n")
