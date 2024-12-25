@@ -2,6 +2,8 @@ from time import sleep
 
 from openpyxl.descriptors import String
 from openpyxl.xml.functions import tostring
+from telebot.asyncio_helper import session
+
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL
 from config.config import WIALON_TOKEN
@@ -108,14 +110,14 @@ def dismantling_gps_menu():
     markup.add( back)
     return markup
 
-def ask_confirmation(message, count:int):
+def ask_confirmation(message, count:int, spec_message: str):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
     button_yes = types.InlineKeyboardButton("ТАК", callback_data="yes")
     button_no = types.InlineKeyboardButton("НІ", callback_data="no")
     markup.add(button_yes, button_no)
 
-    bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. Продовжити?", reply_markup=markup)
+    bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. {spec_message}\n Вивести результат?", reply_markup=markup)
 
 def test_function(message):
     bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
@@ -179,16 +181,14 @@ def cluster_handler(call):
                                            f"Я роблю аналіз, дочекайтесь його завершення...⏳")
 
     bot.answer_callback_query(call.id)
-    # тут має щось запуститись
 
     # Удаляем состояние после выбора
+    print(f"answer {generate_answer(category, cluster)}")
     try:
         session = WialonManager(WIALON_URL, WIALON_TOKEN)
-        print(call.message)
         print(session._get_info())
         print(generate_answer(category, cluster))
         json = session._create_my_json(generate_answer(category, cluster))
-
         # рахуємо к-ть обєктів в групі, що налажать різним кластерам
         count_objects = len(json["items"])
         item_count_chimc = 0
@@ -240,6 +240,7 @@ def cluster_handler(call):
         bot.send_message(call.message.chat.id, f"Я виконав запит {generate_answer(category, cluster)}")
         bot.send_message(call.message.chat.id, formatted_message)
 
+
     except Exception as e:
         print(f"Сталася помилка!: {e}")
 
@@ -271,7 +272,11 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "Введіть EMEI повністю або останні 4 цифри")
         bot.register_next_step_handler(message, find_emei_function)
 
-    elif message.text in ['Монтаж', 'Заміна SIM','Демонтаж по держ. номеру','Демонтаж по EMEI']:
+    elif message.text == 'Демонтаж по EMEI':
+        bot.send_message(message.chat.id, "Введіть EMEI повністю або частину:")
+        bot.register_next_step_handler(message, dismantling_emei_equipment)
+
+    elif message.text in ['Монтаж', 'Заміна SIM','Демонтаж по держ. номеру']:
         bot.send_message(message.chat.id, "В процесі розробки")
 
     elif message.text in 'Демонтаж':
@@ -321,6 +326,25 @@ def find_emei_function(message):
     else:
         bot.send_message(message.chat.id, "Ви ввели не число а якусь беліберду.")
 
+def dismantling_emei_equipment(message):
+    if message.text.isdigit():
+        bot.send_message(message.chat.id, "Ви ввели число. Починаю пошук")
+        myjson = "None"
+        try:
+            session = WialonManager(WIALON_URL,WIALON_TOKEN)
+            print(f"{message.from_user.id} create session:\n{session._get_info()}")
+
+
+            myjson = session._get_json_uid_for_emei(message.text)
+            print(json.dumps(myjson, indent=4, ensure_ascii=False))
+
+        except Exception as e:
+            print(f"Сталася помилка: {e}")
+        bot.send_message(message.chat.id, f"```\n{json.dumps(myjson, indent=4, ensure_ascii=False)}\n```",
+                         parse_mode="MarkdownV2")
+
+    else:
+        bot.send_message(message.chat.id, "Ви ввели не число а якусь беліберду.")
 
 def find_sim_function(message):
     # якщо введено число
@@ -339,7 +363,6 @@ def find_sim_function(message):
         result_json = {"Excell":result[:1]}
         bot.send_message(message.chat.id, f"```\n{json.dumps(result_json, indent=4, ensure_ascii=False)}\n```",
                          parse_mode="MarkdownV2")
-
 
 def find_function(message):
 
@@ -371,12 +394,12 @@ def find_function(message):
                                               "sys_name",
                                               f"*{plate_number}*",
                                               "sys_name", 1, 1 + 256 + 1024 + 4096 + 2097152, 0, 10000)
-
+        print(my_json)
         if len(my_json['items']) == 0:
             bot.send_message(message.chat.id, f"Вибачте, я не знайшов такого держ.номера")
             main_menu()
             return
-        ask_confirmation(message,len(my_json['items']))
+        ask_confirmation(message,len(my_json['items']),"")
 
         user_state[message.from_user.id] = {'wialon_json': session._get_special_list_json(my_json)}  # Зберігаємо list_json в словник станів
 
@@ -384,7 +407,7 @@ def find_function(message):
     else:
         bot.send_message(message.chat.id, "Невірний формат." ,reply_markup=engineer_gps_search_menu())
 
-def generate_answer(category: String, cluster: String):
+def generate_answer(category, cluster):
     match (category, cluster):
         case ('Вантажний автотранспорт', 'АП'):
             return "АП Вантажні автомобілі 1 група"

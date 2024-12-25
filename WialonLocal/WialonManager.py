@@ -1,5 +1,7 @@
 import json
 from datetime import datetime, timezone, timedelta
+from typing import Dict
+
 import pytz
 from turtledemo.clock import datum
 
@@ -106,6 +108,29 @@ class WialonManager:
         data = response.json()
         return data
 
+    def _get_json_uid_for_emei(self, emei : str) -> Dict:
+        """
+        Функція повертає список uid по заданому EMEI
+        :param emei: 0 < emei < 15 - емей gps обладнання
+        :return: Dict [wialon][Dict]
+        """
+        json = self._get_list_universal("avl_unit",
+                                              "sys_unique_id",
+                                              f"*{emei}*",
+                                              "sys_unique_id", 1, 1 +256 , 0, 10000)
+        list ={
+            "wialon" : {}
+        }
+
+        for index, item in enumerate(json["items"]):
+            list["wialon"][index+1] = {
+                'nm' : item['nm'],
+                'uid' : item['uid'],
+                'ph' : item['ph']
+            }
+
+        return list
+
     def _get_list_uid_for_groupName(self,gropName):
         """
         Фукнція повертає List з uid об'єктів, що знаходяться в групі з назвою propName
@@ -115,10 +140,9 @@ class WialonManager:
         json = self._get_list_universal("avl_unit_group",
                                        "sys_name,sys_id,sys_unique_id",
                                        gropName,
-                                       "sys_name", 1, 1, 0, 10000)
-        # Достаем значение поля 'u'
-        u_values = json['items'][0]['u']
-        return u_values
+                                       "sys_name", 1, 1  + 256 + 1024+ 4096 + 2097152, 0, 10000)
+
+        return json["items"][0]['u']
 
     def _get_obj_for_id(self, obj_id):
 
@@ -159,9 +183,10 @@ class WialonManager:
 
             #отримать всі uid що в групі і загнать їх в ліст list_uid
         list_uid = self._get_list_uid_for_groupName(gropName)
-
+        #print(json.dumps(list_uid, indent=4, ensure_ascii=False))
 
         for index, uid in enumerate(list_uid):
+
             obj = self._get_obj_for_id(uid)  # Получаем объект по UID
 
             sensors = obj.get("item", {}).get("sens", {})
@@ -169,7 +194,7 @@ class WialonManager:
             data["items"][str(index + 1)] = {  # Індекси в json починаються з 0, тому добавляємо 1
                 "id": obj.get("item").get("id"),
                 "nm": obj.get("item").get("nm"),
-                "sensors":self.__parse_sensors(obj.get("item").get("id"),sensors),
+                "sensors": self.__parse_sensors(obj.get("item").get("id"), sensors),
                 "property": self.__find_aflds_property(obj, "Власність")
             }
 
@@ -253,6 +278,8 @@ class WialonManager:
             result_list.append(data)
 
         return result_list
+
+
 
 
 
