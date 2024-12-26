@@ -129,26 +129,35 @@ def start(message):
     if chat_type == "private":
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
 
-@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no"])
+@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel"])
 def handle_callback(call):
     # Відповідно до вибору виконуються дії
     user_id = call.from_user.id
     if call.data == "yes" and user_state[user_id].get("wialon_json"):
         #bot.send_message(call.message.chat.id, f"```\n{user_state[user_id].get("wialon_json")}\n```", parse_mode="MarkdownV2")
-
+        # Створення інлайн кнопок
+        markup = types.InlineKeyboardMarkup()
+        confirm_button = types.InlineKeyboardButton("Підтверджую демонтаж", callback_data="confirm_dismantle")
+        cancel_button = types.InlineKeyboardButton("Відміна", callback_data="cancel")
+        markup.add(confirm_button, cancel_button)
         for i in user_state[user_id].get("wialon_json"):
-            bot.send_message(call.message.chat.id, f"```\n{json.dumps(i, indent=4, ensure_ascii=False)}\n```", parse_mode="MarkdownV2")
+            bot.send_message(call.message.chat.id, f"```\n{json.dumps(i, indent=4, ensure_ascii=False)}\n```", parse_mode="MarkdownV2" , reply_markup=markup)
 
         #обнуляємо навігацію користувача (історію його виборів в меню)
         user_state.pop(user_id, None)
         engineer_gps_search_menu()
-    elif call.data == "no":
+    elif call.data in ["no", "cancel"]:
         # обнуляємо навігацію користувача (історію його виборів в меню)
         user_state.pop(user_id, None)
         bot.send_message(call.message.chat.id, "Як забажаєте.",reply_markup=engineer_gps_menu())
         return
+    elif call.data == "confirm_dismantle":
+        user_state.pop(user_id, None)
+        bot.send_message(call.message.chat.id, "Тут має бути демонтаж, але його поки що нема ще!")
     # Закриваємо "завантаження" кнопки
+    #bot.answer_callback_query(call.message.chat.id)
     bot.answer_callback_query(call.id)
+
 
 # оброботчик, для меню, який першим оброблюэ повідомлення від користувача
 @bot.message_handler(func=lambda message: message.text in ['Вантажний автотранспорт', 'Комбайни'])
@@ -336,12 +345,27 @@ def dismantling_emei_equipment(message):
 
 
             myjson = session._get_json_uid_for_emei(message.text)
-            print(json.dumps(myjson, indent=4, ensure_ascii=False))
+            count_obj = len(myjson["wialon"])
+            print(f"Найдено {count_obj} об'єктів")
+
+            if len(myjson["wialon"]) >1:
+                ask_confirmation(message, count_obj, "Я зможу зробити демонтаж тільки в тому випадку, коли EMEI унікальний")
+
+                user_state[message.from_user.id] = {
+                    'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
+
+            if len(myjson["wialon"]) ==1:
+                ask_confirmation(message, count_obj, "")
+
+                user_state[message.from_user.id] = {
+                    'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
+
+
+
 
         except Exception as e:
             print(f"Сталася помилка: {e}")
-        bot.send_message(message.chat.id, f"```\n{json.dumps(myjson, indent=4, ensure_ascii=False)}\n```",
-                         parse_mode="MarkdownV2")
+
 
     else:
         bot.send_message(message.chat.id, "Ви ввели не число а якусь беліберду.")
@@ -402,7 +426,7 @@ def find_function(message):
         ask_confirmation(message,len(my_json['items']),"")
 
         user_state[message.from_user.id] = {'wialon_json': session._get_special_list_json(my_json)}  # Зберігаємо list_json в словник станів
-
+        print(f"user state = \n{json.dumps(user_state[message.from_user.id], indent=4, ensure_ascii=False)}")
 
     else:
         bot.send_message(message.chat.id, "Невірний формат." ,reply_markup=engineer_gps_search_menu())
@@ -512,4 +536,4 @@ def wait_for_file_DU02(message):
         bot.register_next_step_handler(message, wait_for_file_DU02)  # Чекаєм знову файл
 
 
-bot.polling(none_stop=True)
+bot.polling(none_stop=True, timeout=60)

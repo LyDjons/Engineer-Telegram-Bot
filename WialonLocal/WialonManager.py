@@ -119,15 +119,22 @@ class WialonManager:
                                               f"*{emei}*",
                                               "sys_unique_id", 1, 1 +256 , 0, 10000)
         list ={
-            "wialon" : {}
+            "wialon" : []
         }
 
         for index, item in enumerate(json["items"]):
-            list["wialon"][index+1] = {
+            """list["wialon"][index+1] = {
                 'nm' : item['nm'],
                 'uid' : item['uid'],
                 'ph' : item['ph']
-            }
+            }"""
+            list["wialon"].append({
+                'nm' : item['nm'],
+                'uid' : item['uid'],
+                'ph' : item['ph']
+            })
+
+
 
         return list
 
@@ -278,6 +285,7 @@ class WialonManager:
             result_list.append(data)
 
         return result_list
+
 
 
 
