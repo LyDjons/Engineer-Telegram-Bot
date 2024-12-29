@@ -1,11 +1,14 @@
+from datetime import datetime
 from time import sleep
+from unittest.mock import call
 
+from cffi.model import PrimitiveType
 from openpyxl.descriptors import String
 from openpyxl.xml.functions import tostring
 from telebot.asyncio_helper import session
 
 from fileeditor.FileManager import FileManager
-from config.config import TELEGRAM_TOKEN, WIALON_URL
+from config.config import TELEGRAM_TOKEN, WIALON_URL, ENGINEER_CHAT_ID, THREAD_ID
 from config.config import WIALON_TOKEN
 from telebot import types
 from WialonLocal.WialonManager import WialonManager
@@ -110,6 +113,14 @@ def dismantling_gps_menu():
     markup.add( back)
     return markup
 
+def ask_approve_confirmation():
+    # Створення інлайн-клавіатури
+    markup = types.InlineKeyboardMarkup()
+    button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="approve")
+    button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline")
+    markup.add(button_yes, button_no)
+    return markup
+
 def ask_confirmation(message, count:int, spec_message: str):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
@@ -122,6 +133,10 @@ def ask_confirmation(message, count:int, spec_message: str):
 def test_function(message):
     bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
 
+@bot.message_handler(commands=['get_chat_id'])
+def get_chat_id(message):
+    bot.send_message(message.chat.id, f"Your chat ID is: {message.chat.id} thread = {message.message_thread_id}",
+                     message_thread_id=message.message_thread_id)
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -129,17 +144,19 @@ def start(message):
     if chat_type == "private":
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
 
-@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel"])
+@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","approve"])
 def handle_callback(call):
     # Відповідно до вибору виконуються дії
     user_id = call.from_user.id
     if call.data == "yes" and user_state[user_id].get("wialon_json"):
         #bot.send_message(call.message.chat.id, f"```\n{user_state[user_id].get("wialon_json")}\n```", parse_mode="MarkdownV2")
         # Створення інлайн кнопок
+
         markup = types.InlineKeyboardMarkup()
         confirm_button = types.InlineKeyboardButton("Підтверджую демонтаж", callback_data="confirm_dismantle")
         cancel_button = types.InlineKeyboardButton("Відміна", callback_data="cancel")
         markup.add(confirm_button, cancel_button)
+
         for i in user_state[user_id].get("wialon_json"):
             bot.send_message(call.message.chat.id, f"```\n{json.dumps(i, indent=4, ensure_ascii=False)}\n```", parse_mode="MarkdownV2" , reply_markup=markup)
 
@@ -152,8 +169,58 @@ def handle_callback(call):
         bot.send_message(call.message.chat.id, "Як забажаєте.",reply_markup=engineer_gps_menu())
         return
     elif call.data == "confirm_dismantle":
+
         user_state.pop(user_id, None)
-        bot.send_message(call.message.chat.id, "Тут має бути демонтаж, але його поки що нема ще!")
+        message_text = call.message.text
+        bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```" ,parse_mode="MarkdownV2", reply_markup=ask_approve_confirmation(), message_thread_id=THREAD_ID)
+        # Удаляем сообщение в чате бота после отправки
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        #bot.send_message(call.message.chat.id, "Демонтаж відправлено в основний чат!")
+        bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Демонтаж відправлено в основний чат", parse_mode="MarkdownV2")
+
+    elif call.data == "approve":
+        print(f"User : {call.from_user.id} push '{call.data}' {getattr(call, 'message_thread_id', 'No thread ID')}")
+
+        #print(call.message.text)
+        # конвертуэмо строку в словник
+        message_dict = json.loads(call.message.text)
+        # отримуэмо значення  "nm"
+        #nm_value = message_dict.get("nm")
+        # Получаем время отправки сообщения
+        message_time = call.message.date
+
+        # Преобразуем Unix timestamp в читаемый формат
+        readable_time = datetime.fromtimestamp(message_time)
+        #print(f"Value of 'nm': {nm_value}")
+
+        # Отримуємо поточну дату та час
+        current_datetime = datetime.now()
+        # Форматуємо дату та час
+        formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        # Вычисление разницы во времени
+        delay = current_datetime - readable_time
+
+        obj = str (f"operation : {message_dict.get("operations")}\n"
+              f"nm         : {message_dict.get("nm")}\n"
+              f"uid        : {message_dict.get("uid")}\n"
+              f"short_uid  : {message_dict.get("uid")[-5:]}\n"
+              f"ph         : {message_dict.get("ph")}")
+
+        info = str (f"Дата заявки  : {readable_time}\n"
+              f"Підтвердження: {formatted_datetime}\n"
+              f"Затримка     : {delay}\n"
+              f"Ініціатор    : {call.from_user.username}")
+
+        #тут треба видалить обэкт у Віалон Локал, потім видалить повідомлення і написать звіт
+
+        bot.send_message(call.message.chat.id, f"{obj}\n{info}",message_thread_id=THREAD_ID)
+
+        print(call.message.message_thread_id)
+
+
+
+
+
     # Закриваємо "завантаження" кнопки
     #bot.answer_callback_query(call.message.chat.id)
     bot.answer_callback_query(call.id)
@@ -256,7 +323,7 @@ def cluster_handler(call):
     # обнуляєм навігацію користувача (історію його виборів в меню)
     user_state.pop(user_id, None)
 
-@bot.message_handler(func=lambda message: True)
+@bot.message_handler(func=lambda message: message.chat.type ==  'private')
 def menu_handler(message):
     if message.text == 'Тест':
         bot.send_message(message.chat.id,  "Тестова ф-я завершилась", reply_markup=test_function(message))
@@ -314,6 +381,7 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "Повернення до головного меню", reply_markup=main_menu())
 
     else:
+        print(message.chat.type)
         bot.send_message(message.chat.id, "Щось пішло не так.Повернення до головного меню", reply_markup=main_menu())
 
 def find_emei_function(message):
@@ -355,13 +423,12 @@ def dismantling_emei_equipment(message):
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
 
             if len(myjson["wialon"]) ==1:
+                myjson["wialon"][0] = {"operation": "демонтаж", **myjson["wialon"][0]}
                 ask_confirmation(message, count_obj, "")
+                print(myjson)
 
                 user_state[message.from_user.id] = {
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
-
-
-
 
         except Exception as e:
             print(f"Сталася помилка: {e}")
@@ -536,4 +603,4 @@ def wait_for_file_DU02(message):
         bot.register_next_step_handler(message, wait_for_file_DU02)  # Чекаєм знову файл
 
 
-bot.polling(none_stop=True, timeout=60)
+bot.polling(none_stop=True)

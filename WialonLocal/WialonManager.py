@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone, timedelta
 from typing import Dict
+from webbrowser import Error
 
 import pytz
 from turtledemo.clock import datum
@@ -77,6 +78,23 @@ class WialonManager:
         data = response.json()
         return data
 
+    def _update_group(self,group_id,list_id):
+        """
+        Функція апдейту об'єктів в групі
+        :param group_id: маска пошуку групи по ID
+        :return: json
+        """
+        query = (
+            'svc=unit_group/update_units&params={'
+            f'"itemId":"{group_id}",'
+            f'"units":{list_id}'
+            '}'
+        )
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
+
+
     def _get_list_universal(self,itemsType,propName,propValueMask,sortType,force,flags,_from,to):
         """
         Універсальна ф-кція пошуку елементів в Wialon Local
@@ -134,8 +152,6 @@ class WialonManager:
                 'ph' : item['ph']
             })
 
-
-
         return list
 
     def _get_list_uid_for_groupName(self,gropName):
@@ -148,8 +164,20 @@ class WialonManager:
                                        "sys_name,sys_id,sys_unique_id",
                                        gropName,
                                        "sys_name", 1, 1  + 256 + 1024+ 4096 + 2097152, 0, 10000)
-
+        print(json)
         return json["items"][0]['u']
+
+    def _get_json_for_groupName(self,gropName):
+        """
+        Фукнція повертає List з uid об'єктів, що знаходяться в групі з назвою propName
+        :param gropName: назва групи
+        :return: list[uid1, uid2, uid3...]
+        """
+        json = self._get_list_universal("avl_unit_group",
+                                       "sys_name,sys_id,sys_unique_id",
+                                       gropName,
+                                       "sys_name", 1, 1  + 256 + 1024+ 4096 + 2097152, 0, 10000)
+        return json
 
     def _get_obj_for_id(self, obj_id):
 
@@ -183,6 +211,21 @@ class WialonManager:
         data = response.json()
         return data
 
+    def _create_obj(self, creatorId:str, name:str, hwTypeId:str):
+        query = (
+            'svc=core/create_unit&params={'
+            f'"creatorId":"{creatorId}",'
+            f'"name":"{name}",'
+            f'"hwTypeId":"{hwTypeId}",'
+            f'"dataFlags":"1"'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+
+        return data
+
     def _create_my_json(self,gropName):
         data = {
             "items": {}
@@ -204,6 +247,7 @@ class WialonManager:
                 "sensors": self.__parse_sensors(obj.get("item").get("id"), sensors),
                 "property": self.__find_aflds_property(obj, "Власність")
             }
+            print(data["items"][str(index + 1)])
 
         return data
 
@@ -285,6 +329,7 @@ class WialonManager:
             result_list.append(data)
 
         return result_list
+
 
 
 
