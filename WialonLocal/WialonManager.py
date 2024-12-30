@@ -192,6 +192,19 @@ class WialonManager:
         data = response.json()
         return data
 
+    def _get_obj_for_id_and_flags(self, obj_id:int, flags:int):
+
+        query = (
+            'svc=core/search_item&params={'
+            f'"id":{obj_id},'
+            f'"flags":{flags}'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
+
     def _get_all_sensors(self,obj):
         sensors_list = []
         # Проход по всем сенсорам и вывод их имен
