@@ -94,6 +94,35 @@ class WialonManager:
         data = response.json()
         return data
 
+    def _find_groups(self,group_mask_name="*",exception_name_mask="!*історія*", creator_id="145|47|163|249|368",flags=7):
+        """
+        Фцнкція повертає групи техніки за заданими критеріями
+
+        :param group_mask_name: Маска імені групи. Приклад: *Вантажні*
+        :param exception_name_mask: Маска виключень в імені групи. Приклад: не відображати "!*історія*"
+        :param creator_id: ID творця. Приклад: "145|47|163|249|368"
+        :param flags:  Флаг виводу
+        :return: json
+        """
+        query = (
+            'svc=core/search_items&params={"spec":{'
+            '"itemsType": "avl_unit_group",'
+            '"propName": "sys_name,sys_name,sys_user_creator",'
+            f'"propValueMask": "{group_mask_name},{exception_name_mask},{creator_id}",'
+            '"sortType": "sys_units",'
+            '"propType": "sys_name,sys_user_creator",'
+            '"or_logic": "0"'
+            '},'
+            '"force": "1",'
+            f'"flags": "{flags}",'
+            '"from": "0",'
+            '"to": "100000"'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
 
     def _get_list_universal(self,itemsType,propName,propValueMask,sortType,force,flags,_from,to):
         """
@@ -164,7 +193,6 @@ class WialonManager:
                                        "sys_name,sys_id,sys_unique_id",
                                        gropName,
                                        "sys_name", 1, 1  + 256 + 1024+ 4096 + 2097152, 0, 10000)
-        print(json)
         return json["items"][0]['u']
 
     def _get_json_for_groupName(self,gropName):
@@ -342,6 +370,7 @@ class WialonManager:
             result_list.append(data)
 
         return result_list
+
 
 
 
