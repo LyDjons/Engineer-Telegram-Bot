@@ -124,6 +124,51 @@ class WialonManager:
         data = response.json()
         return data
 
+    def _delete_obj_from_group(self,id_obj, name_group, exception_name_group ):
+
+        #Шукаємо всі групи, в яких знаходиться id_obj
+        json_result = self._find_group_for_id_obj(id_obj)
+
+        for item in json_result["items"]:
+            print(item)
+
+        #якщо маска групи пуста то видаляєм з усіх груп
+        if (name_group==""):
+            for item in json_result["items"]:
+                #пропускаємо виключення по назві групи
+                if exception_name_group in item["nm"]:
+                    continue
+                if id_obj in item["u"]:
+                    #видаляємо id об'єкта з списка та робимо апдейт списка групи з id
+                    item["u"].remove(id_obj)
+                    self._update_group(item["id"],item["u"])
+
+        else:
+            for item in json_result["items"]:
+                #пропускаємо виключення по назві групи
+                if exception_name_group in item["nm"]:
+                    continue
+                if name_group == item["nm"]:
+                    print("i finded!")
+                    if id_obj in item["u"]:
+                        # видаляємо id об'єкта з списка та робимо апдейт списка групи з id
+                        item["u"].remove(id_obj)
+                        self._update_group(item["id"],item["u"])
+
+
+        pass
+
+    def _find_group_for_id_obj(self, obj_id):
+
+        json_result = self._find_groups("*", "**", "145|47|163|249|368", 7)
+
+        #цикл із зворотньою ітерацією, щоб не порушить індекси при видаленні елементів:
+        for index in range(len(json_result["items"]) - 1, -1, -1):
+            if obj_id not in json_result["items"][index]["u"]:
+                del json_result["items"][index]  # Видаляємо елемент по index
+
+        return json_result
+
     def _get_list_universal(self,itemsType,propName,propValueMask,sortType,force,flags,_from,to):
         """
         Універсальна ф-кція пошуку елементів в Wialon Local
@@ -370,6 +415,8 @@ class WialonManager:
             result_list.append(data)
 
         return result_list
+
+
 
 
 
