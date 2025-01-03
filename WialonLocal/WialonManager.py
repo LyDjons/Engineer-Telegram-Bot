@@ -125,15 +125,20 @@ class WialonManager:
         return data
 
     def _delete_obj_from_group(self,id_obj, name_group, exception_name_group ):
+        """
+        Дана функція отримує список груп в якій знаходиться об'єкт по id. робимо апдейт груп і виключаємо id об'єкта
+        із списка даної групи
 
+        :param id_obj: id об'єкта що хочемо видалить з груп
+        :param name_group: Макса групп. Якщо name_group="", то видаляється з усіх крім exception_name_group
+        :param exception_name_group: виключення з яких груп не видаляємо об'єкт. Приклад exception_name_group="історія"
+        :return: json
+        """
         #Шукаємо всі групи, в яких знаходиться id_obj
         json_result = self._find_group_for_id_obj(id_obj)
 
-        for item in json_result["items"]:
-            print(item)
-
         #якщо маска групи пуста то видаляєм з усіх груп
-        if (name_group==""):
+        if name_group=="":
             for item in json_result["items"]:
                 #пропускаємо виключення по назві групи
                 if exception_name_group in item["nm"]:
@@ -149,14 +154,13 @@ class WialonManager:
                 if exception_name_group in item["nm"]:
                     continue
                 if name_group == item["nm"]:
-                    print("i finded!")
                     if id_obj in item["u"]:
                         # видаляємо id об'єкта з списка та робимо апдейт списка групи з id
                         item["u"].remove(id_obj)
                         self._update_group(item["id"],item["u"])
 
 
-        pass
+        return json_result
 
     def _find_group_for_id_obj(self, obj_id):
 
