@@ -158,11 +158,10 @@ def handle_callback(call):
 
     user_id = call.from_user.id
     if call.data == "yes_find" and user_state[user_id].get("wialon_json"):
-        for item in user_state[user_id].get("wialon_json"):
+        for index, item in enumerate(user_state[user_id].get("wialon_json")):
+            if index == 10: break
             bot.send_message(call.message.chat.id, f"```\n{json.dumps(item, indent=4, ensure_ascii=False)}\n```",
                              parse_mode="MarkdownV2")
-        #print(len(user_state[user_id].get("wialon_json")))
-        #print(json.dumps(user_state[user_id].get("wialon_json"), indent=4, ensure_ascii=False))
 
 
     elif call.data == "yes" and user_state[user_id].get("wialon_json"):
