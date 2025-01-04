@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone, timedelta
 from typing import Dict
+from unicodedata import category
 from webbrowser import Error
 
 import pytz
@@ -395,10 +396,14 @@ class WialonManager:
         result_list = []
 
         for i, item in enumerate(my_json['items']):
-            print(f"Index {i+1}: {item['nm']}")
-            last_msg_utc_time = datetime.fromtimestamp(my_json['items'][i]['lmsg']['t'], timezone.utc)
-            # Переврдимо дату по Києву (автоматично)
-            last_msg_utc_time = last_msg_utc_time.astimezone(pytz.timezone('Europe/Kyiv'))
+            #print(f"Index {i+1}: {item['nm']}")
+            try:
+                last_msg_utc_time = datetime.fromtimestamp(my_json['items'][i]['lmsg']['t'], timezone.utc)
+                # Переврдимо дату по Києву (автоматично)
+                last_msg_utc_time = last_msg_utc_time.astimezone(pytz.timezone('Europe/Kyiv'))
+            except Exception as e:
+                print(f"Помилка отримання дати в _get_special_list_json {e}")
+                last_msg_utc_time = None
             # отримуємо значення всіх датчиків по id об'єкта - id sensors: value
             sensor_value_list = self._get_sensor_value(my_json['items'][i]['id'])
             # вивантажуємо в ліст назву датчика та останні його значення якщо це датчики напруги
@@ -413,7 +418,7 @@ class WialonManager:
                 "emei": my_json['items'][i]['uid'],
                 "sim": my_json['items'][i]['ph'],
                 "online": my_json['items'][i]['netconn'],
-                "time": last_msg_utc_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "time": last_msg_utc_time.strftime("%Y-%m-%d %H:%M:%S") if last_msg_utc_time != None else "None",
                 "sensors": sensors_data
             }
             result_list.append(data)

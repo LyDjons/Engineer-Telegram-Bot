@@ -121,12 +121,20 @@ def ask_approve_confirmation():
     markup.add(button_yes, button_no)
     return markup
 
-def ask_confirmation(message, count:int, spec_message: str):
+def ask_confirmation(message, count:int, spec_message: str, specificator="simple"):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
+
     button_yes = types.InlineKeyboardButton("ТАК", callback_data="yes")
+    button_find_yes = types.InlineKeyboardButton("ТАК", callback_data="yes_find")
+
     button_no = types.InlineKeyboardButton("НІ", callback_data="no")
-    markup.add(button_yes, button_no)
+
+    if specificator =="simple":
+        markup.add(button_yes, button_no)
+    elif specificator=="find":
+        markup.add(button_find_yes, button_no)
+        spec_message = f"Зможу вивести тільки перші {count if count<10 else 10}" if count>1 else ""
 
     bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. {spec_message}\n Вивести результат?", reply_markup=markup)
 
@@ -144,14 +152,32 @@ def start(message):
     if chat_type == "private":
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
 
-@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","approve"])
+@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","approve","yes_find"])
 def handle_callback(call):
-    # Відповідно до вибору виконуються дії
-    user_id = call.from_user.id
-    if call.data == "yes" and user_state[user_id].get("wialon_json"):
-        #bot.send_message(call.message.chat.id, f"```\n{user_state[user_id].get("wialon_json")}\n```", parse_mode="MarkdownV2")
-        # Створення інлайн кнопок
+    print(f"call data = {call.data}")
 
+    user_id = call.from_user.id
+    if call.data == "yes_find" and user_state[user_id].get("wialon_json"):
+        for item in user_state[user_id].get("wialon_json"):
+            bot.send_message(call.message.chat.id, f"```\n{json.dumps(item, indent=4, ensure_ascii=False)}\n```",
+                             parse_mode="MarkdownV2")
+        #print(len(user_state[user_id].get("wialon_json")))
+        #print(json.dumps(user_state[user_id].get("wialon_json"), indent=4, ensure_ascii=False))
+
+
+    elif call.data == "yes" and user_state[user_id].get("wialon_json"):
+
+        count_items = len(user_state[user_id].get("wialon_json"))
+        if count_items > 1:
+            for item in user_state[user_id].get("wialon_json"):
+                bot.send_message(call.message.chat.id, f"```\n{json.dumps(item, indent=4, ensure_ascii=False)}\n```",
+                                 parse_mode="MarkdownV2")
+            bot.send_message(call.message.chat.id,
+                             f"IMEI має бути унікальним, я зможу зробити демонтаж, якщо буде знайдено тільки один об'єкт")
+            return
+
+
+        # Створення інлайн кнопок
         markup = types.InlineKeyboardMarkup()
         confirm_button = types.InlineKeyboardButton("Підтверджую демонтаж", callback_data="confirm_dismantle")
         cancel_button = types.InlineKeyboardButton("Відміна", callback_data="cancel")
@@ -172,7 +198,10 @@ def handle_callback(call):
 
         user_state.pop(user_id, None)
         message_text = call.message.text
-        bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```" ,parse_mode="MarkdownV2", reply_markup=ask_approve_confirmation(), message_thread_id=THREAD_ID)
+        bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```" ,
+                         parse_mode="MarkdownV2",
+                         reply_markup=ask_approve_confirmation(),
+                         message_thread_id=THREAD_ID)
         # Удаляем сообщение в чате бота после отправки
         bot.delete_message(call.message.chat.id, call.message.message_id)
         #bot.send_message(call.message.chat.id, "Демонтаж відправлено в основний чат!")
@@ -216,9 +245,6 @@ def handle_callback(call):
         bot.send_message(call.message.chat.id, f"{obj}\n{info}",message_thread_id=THREAD_ID)
 
         print(call.message.message_thread_id)
-
-
-
 
 
     # Закриваємо "завантаження" кнопки
@@ -417,18 +443,21 @@ def dismantling_emei_equipment(message):
             print(f"Найдено {count_obj} об'єктів")
 
             if len(myjson["wialon"]) >1:
-                ask_confirmation(message, count_obj, "Я зможу зробити демонтаж тільки в тому випадку, коли EMEI унікальний")
+                ask_confirmation(message, count_obj, "Я зможу зробити демонтаж тільки в тому випадку, коли EMEI унікальний","dismantling")
 
                 user_state[message.from_user.id] = {
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
 
             if len(myjson["wialon"]) ==1:
                 myjson["wialon"][0] = {"operation": "демонтаж", **myjson["wialon"][0]}
-                ask_confirmation(message, count_obj, "")
+                ask_confirmation(message, count_obj, "", "dismantling")
                 print(myjson)
 
                 user_state[message.from_user.id] = {
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
+
+            if len(myjson["wialon"]) ==0:
+                bot.send_message(message.chat.id, "Я нічого не знайшов. Спробуйте ще раз")
 
         except Exception as e:
             print(f"Сталася помилка: {e}")
@@ -490,10 +519,10 @@ def find_function(message):
             bot.send_message(message.chat.id, f"Вибачте, я не знайшов такого держ.номера")
             main_menu()
             return
-        ask_confirmation(message,len(my_json['items']),"")
+        ask_confirmation(message,len(my_json['items']),"", "find")
 
         user_state[message.from_user.id] = {'wialon_json': session._get_special_list_json(my_json)}  # Зберігаємо list_json в словник станів
-        print(f"user state = \n{json.dumps(user_state[message.from_user.id], indent=4, ensure_ascii=False)}")
+        #print(f"user state = \n{json.dumps(user_state[message.from_user.id], indent=4, ensure_ascii=False)}")
 
     else:
         bot.send_message(message.chat.id, "Невірний формат." ,reply_markup=engineer_gps_search_menu())
