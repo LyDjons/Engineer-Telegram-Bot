@@ -215,6 +215,7 @@ class WialonManager:
                                               "sys_unique_id",
                                               f"*{emei}*",
                                               "sys_unique_id", 1, 1 +256 , 0, 10000)
+        print(json)
         list ={
             "wialon" : []
         }
@@ -227,6 +228,7 @@ class WialonManager:
             }"""
             list["wialon"].append({
                 'nm' : item['nm'],
+                'protocol' : self._device_type(item['hw']),
                 'uid' : item['uid'],
                 'ph' : item['ph']
             })

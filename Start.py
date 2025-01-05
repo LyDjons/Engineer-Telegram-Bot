@@ -1,4 +1,5 @@
 from datetime import datetime
+from idlelib.colorizer import prog_group_name_to_tag
 from time import sleep
 from unittest.mock import call
 
@@ -113,12 +114,17 @@ def dismantling_gps_menu():
     markup.add( back)
     return markup
 
-def ask_approve_confirmation():
+def ask_approve_confirmation(specificator:str):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
-    button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="approve")
+    button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_dismantle")
+    button_yes2 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_dismantle")
     button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline")
-    markup.add(button_yes, button_no)
+
+    if specificator == "confirm_dismantle":
+        markup.add(button_yes, button_no)
+    if specificator == "approve_dismantle":
+        markup.add(button_yes2, button_no)
     return markup
 
 def ask_confirmation(message, count:int, spec_message: str, specificator="simple"):
@@ -127,6 +133,7 @@ def ask_confirmation(message, count:int, spec_message: str, specificator="simple
 
     button_yes = types.InlineKeyboardButton("ТАК", callback_data="yes")
     button_find_yes = types.InlineKeyboardButton("ТАК", callback_data="yes_find")
+    button_dismantling_show = types.InlineKeyboardButton("ТАК", callback_data="show_dismantling")
 
     button_no = types.InlineKeyboardButton("НІ", callback_data="no")
 
@@ -135,6 +142,8 @@ def ask_confirmation(message, count:int, spec_message: str, specificator="simple
     elif specificator=="find":
         markup.add(button_find_yes, button_no)
         spec_message = f"Зможу вивести тільки перші {count if count<10 else 10}" if count>1 else ""
+    elif specificator == "dismantling":
+        markup.add(button_dismantling_show, button_no)
 
     bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. {spec_message}\n Вивести результат?", reply_markup=markup)
 
@@ -152,12 +161,21 @@ def start(message):
     if chat_type == "private":
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
 
-@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","approve","yes_find"])
+@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","yes_find"
+                                                            ,"show_dismantling","approve_dismantle"])
 def handle_callback(call):
     print(f"call data = {call.data}")
 
     user_id = call.from_user.id
+
     if call.data == "yes_find" and user_state[user_id].get("wialon_json"):
+        for index, item in enumerate(user_state[user_id].get("wialon_json")):
+            if index == 10: break
+            bot.send_message(call.message.chat.id, f"```\n{json.dumps(item, indent=4, ensure_ascii=False)}\n```",
+                             parse_mode="MarkdownV2")
+
+    elif call.data == "show_dismantling":
+
         for index, item in enumerate(user_state[user_id].get("wialon_json")):
             if index == 10: break
             bot.send_message(call.message.chat.id, f"```\n{json.dumps(item, indent=4, ensure_ascii=False)}\n```",
@@ -175,43 +193,34 @@ def handle_callback(call):
                              f"IMEI має бути унікальним, я зможу зробити демонтаж, якщо буде знайдено тільки один об'єкт")
             return
 
-
-        # Створення інлайн кнопок
-        markup = types.InlineKeyboardMarkup()
-        confirm_button = types.InlineKeyboardButton("Підтверджую демонтаж", callback_data="confirm_dismantle")
-        cancel_button = types.InlineKeyboardButton("Відміна", callback_data="cancel")
-        markup.add(confirm_button, cancel_button)
-
-        for i in user_state[user_id].get("wialon_json"):
-            bot.send_message(call.message.chat.id, f"```\n{json.dumps(i, indent=4, ensure_ascii=False)}\n```", parse_mode="MarkdownV2" , reply_markup=markup)
-
         #обнуляємо навігацію користувача (історію його виборів в меню)
         user_state.pop(user_id, None)
         engineer_gps_search_menu()
+
     elif call.data in ["no", "cancel"]:
         # обнуляємо навігацію користувача (історію його виборів в меню)
         user_state.pop(user_id, None)
         bot.send_message(call.message.chat.id, "Як забажаєте.",reply_markup=engineer_gps_menu())
         return
+
     elif call.data == "confirm_dismantle":
 
         user_state.pop(user_id, None)
         message_text = call.message.text
         bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```" ,
                          parse_mode="MarkdownV2",
-                         reply_markup=ask_approve_confirmation(),
+                         reply_markup=ask_approve_confirmation("approve_dismantle"),
                          message_thread_id=THREAD_ID)
         # Удаляем сообщение в чате бота после отправки
         bot.delete_message(call.message.chat.id, call.message.message_id)
-        #bot.send_message(call.message.chat.id, "Демонтаж відправлено в основний чат!")
         bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Демонтаж відправлено в основний чат", parse_mode="MarkdownV2")
 
-    elif call.data == "approve":
-        print(f"User : {call.from_user.id} push '{call.data}' {getattr(call, 'message_thread_id', 'No thread ID')}")
+    elif call.data == "approve_dismantle":
+        print(f"User : {call.from_user.id} name = {call.from_user.first_name} push '{call.data}' message_thread_id = {getattr(call.message, 'message_thread_id', 'No thread ID')}")
 
         #print(call.message.text)
         # конвертуэмо строку в словник
-        message_dict = json.loads(call.message.text)
+        message_dict = json.loads(call.message.text)[0]
         # отримуэмо значення  "nm"
         #nm_value = message_dict.get("nm")
         # Получаем время отправки сообщения
@@ -228,22 +237,25 @@ def handle_callback(call):
         # Вычисление разницы во времени
         delay = current_datetime - readable_time
 
-        obj = str (f"operation : {message_dict.get("operations")}\n"
-              f"nm         : {message_dict.get("nm")}\n"
-              f"uid        : {message_dict.get("uid")}\n"
-              f"short_uid  : {message_dict.get("uid")[-5:]}\n"
-              f"ph         : {message_dict.get("ph")}")
+        print(message_dict.get("nm"))
 
-        info = str (f"Дата заявки  : {readable_time}\n"
+        obj = str (f"operation    : {message_dict.get("operation")}\n"
+              f"Назва          : {message_dict.get("nm")}\n"
+              f"Протокол   : {message_dict.get("protocol")}\n"     
+              f"EMEI            : {message_dict.get("uid")}\n"
+              f"short_EMEI : {message_dict.get("uid")[-5:]}\n"
+              f"сім               : {message_dict.get("ph")}")
+
+        info = str (f"Дата заявки      :  {readable_time}\n"
               f"Підтвердження: {formatted_datetime}\n"
-              f"Затримка     : {delay}\n"
-              f"Ініціатор    : {call.from_user.username}")
+              f"Затримка          : {delay}\n"
+              f"Ініціатор            :  {call.from_user.username}")
 
         #тут треба видалить обэкт у Віалон Локал, потім видалить повідомлення і написать звіт
 
         bot.send_message(call.message.chat.id, f"{obj}\n{info}",message_thread_id=THREAD_ID)
 
-        print(call.message.message_thread_id)
+
 
 
     # Закриваємо "завантаження" кнопки
@@ -419,11 +431,11 @@ def find_emei_function(message):
 
         result = file_excel.find_emei(message.text, json_list)
         if len(result) > 5:
-            bot.send_message(message.chat.id, f"Я знайшов {len(result)} і виведу тільки 1 результат де\n"
-                                              f" {message.text} в кінці EMEI."
+            bot.send_message(message.chat.id, f"Я знайшов {len(result)} ! \nВиведу тільки 1 результат де\n"
+                                              f" {message.text} в кінці EMEI, якщо знайду такий."
                                               "\nСпробуйте ввести на одну цифру більше для уточнення")
         result_json = {"Excell":result[:1]}
-        bot.send_message(message.chat.id, f"```\n{json.dumps(result_json, indent=4, ensure_ascii=False)}\n```",parse_mode="MarkdownV2")
+        print(bot.send_message(message.chat.id, f"```\n{json.dumps(result_json, indent=4, ensure_ascii=False)}\n```",parse_mode="MarkdownV2"))
 
     else:
         bot.send_message(message.chat.id, "Ви ввели не число а якусь беліберду.")
@@ -442,15 +454,19 @@ def dismantling_emei_equipment(message):
             print(f"Найдено {count_obj} об'єктів")
 
             if len(myjson["wialon"]) >1:
-                ask_confirmation(message, count_obj, "Я зможу зробити демонтаж тільки в тому випадку, коли EMEI унікальний","dismantling")
-
+                ask_confirmation(message, count_obj, "\nЯ зможу зробити демонтаж тільки в тому випадку, коли EMEI унікальний.\n"
+                                                     "Інакше виведу результат пошуку але не більше 10!","dismantling")
                 user_state[message.from_user.id] = {
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
 
             if len(myjson["wialon"]) ==1:
                 myjson["wialon"][0] = {"operation": "демонтаж", **myjson["wialon"][0]}
-                ask_confirmation(message, count_obj, "", "dismantling")
-                print(myjson)
+                bot.send_message(message.chat.id,
+                                 f"```\n{json.dumps(myjson["wialon"], 
+                                    indent=4, ensure_ascii=False)}\n```",
+                                     parse_mode = "MarkdownV2",
+                                 reply_markup=ask_approve_confirmation("confirm_dismantle"))
+
 
                 user_state[message.from_user.id] = {
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
