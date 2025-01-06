@@ -119,7 +119,7 @@ def ask_approve_confirmation(specificator:str):
     markup = types.InlineKeyboardMarkup()
     button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_dismantle")
     button_yes2 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_dismantle")
-    button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline")
+    button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline_dismantle")
 
     if specificator == "confirm_dismantle":
         markup.add(button_yes, button_no)
@@ -162,7 +162,7 @@ def start(message):
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
 
 @bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","yes_find"
-                                                            ,"show_dismantling","approve_dismantle"])
+                                                            ,"show_dismantling","approve_dismantle","decline_dismantle"])
 def handle_callback(call):
     print(f"call data = {call.data}")
 
@@ -217,6 +217,8 @@ def handle_callback(call):
 
     elif call.data == "approve_dismantle":
         print(f"User : {call.from_user.id} name = {call.from_user.first_name} push '{call.data}' message_thread_id = {getattr(call.message, 'message_thread_id', 'No thread ID')}")
+        # Зберігаємо  ідентифікатор старого повідомлення
+        old_message_id = call.message.message_id
 
         #print(call.message.text)
         # конвертуэмо строку в словник
@@ -237,8 +239,6 @@ def handle_callback(call):
         # Вычисление разницы во времени
         delay = current_datetime - readable_time
 
-        print(message_dict.get("nm"))
-
         obj = str (f"operation    : {message_dict.get("operation")}\n"
               f"Назва          : {message_dict.get("nm")}\n"
               f"Протокол   : {message_dict.get("protocol")}\n"     
@@ -254,7 +254,10 @@ def handle_callback(call):
         #тут треба видалить обэкт у Віалон Локал, потім видалить повідомлення і написать звіт
 
         bot.send_message(call.message.chat.id, f"{obj}\n{info}",message_thread_id=THREAD_ID)
+        bot.delete_message(call.message.chat.id, old_message_id)
 
+    elif call.data == "decline_dismantle":
+        bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
 
@@ -460,7 +463,7 @@ def dismantling_emei_equipment(message):
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
 
             if len(myjson["wialon"]) ==1:
-                myjson["wialon"][0] = {"operation": "демонтаж", **myjson["wialon"][0]}
+                myjson["wialon"][0] = {"operation": "демонтаж", "creator": message.from_user.username, **myjson["wialon"][0] }
                 bot.send_message(message.chat.id,
                                  f"```\n{json.dumps(myjson["wialon"], 
                                     indent=4, ensure_ascii=False)}\n```",
