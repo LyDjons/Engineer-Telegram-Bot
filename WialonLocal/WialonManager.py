@@ -371,6 +371,25 @@ class WialonManager:
         else:
             return "Device not found"
 
+    def _get_device_id_and_type(self,mask_name):
+
+        query = (
+            'svc=core/get_hw_types&params={'
+            f'"filterType":"id",'
+            f'"filterValue":{1},'
+            f'"includeType":0,'
+            f'"ignoreRename":1'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        """for item in data:
+
+            print(item.get("name"))"""
+        filtered_list = [{"id": item["id"], "name": item["name"]} for item in data if mask_name in item.get("name")]
+        return filtered_list
+
     def __find_aflds_property(self,data,key_property):
         """
         Дізнаємось хто власник об'єкта, якщо це вказано в адміністративному полі об'єкта. Пошук за ключем
@@ -426,6 +445,7 @@ class WialonManager:
             result_list.append(data)
 
         return result_list
+
 
 
 
