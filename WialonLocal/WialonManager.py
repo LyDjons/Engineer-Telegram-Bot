@@ -273,7 +273,12 @@ class WialonManager:
         return data
 
     def _get_obj_for_id_and_flags(self, obj_id:int, flags:int):
-
+        """
+        Отримати об'єкт за id та flags
+        :param obj_id: id об'єкта
+        :param flags: флаг об'єкта
+        :return: json
+        """
         query = (
             'svc=core/search_item&params={'
             f'"id":{obj_id},'
@@ -371,8 +376,12 @@ class WialonManager:
         else:
             return "Device not found"
 
-    def _get_device_id_and_type(self,mask_name):
-
+    def _get_device_id_and_type(self,mask_name="all"):
+        """
+        Функція повертає список id та name протоколів за вказаною маскою
+        :param mask_name: Мака імені протокола. По замовчуванню поверне ввесь список з усіма атрибутами
+        :return: list
+        """
         query = (
             'svc=core/get_hw_types&params={'
             f'"filterType":"id",'
@@ -384,11 +393,31 @@ class WialonManager:
 
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         data = response.json()
-        """for item in data:
-
-            print(item.get("name"))"""
+        if mask_name == "all":
+            return data
         filtered_list = [{"id": item["id"], "name": item["name"]} for item in data if mask_name in item.get("name")]
         return filtered_list
+
+    def _get_users_from_mask(self, mask_name=""):
+
+
+        query = (
+            'svc=core/search_items&params={"spec":{'
+            f'"itemsType":"user",'
+            f'"propName":"sys_name",'
+            f'"propValueMask":"*{mask_name}*",'
+            f'"sortType":"sys_name"'
+            '},'
+            f'"force":"1",'
+            f'"flags":"1",'
+            f'"from":"0",'
+            f'"to":"100000"'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
 
     def __find_aflds_property(self,data,key_property):
         """
@@ -445,6 +474,31 @@ class WialonManager:
             result_list.append(data)
 
         return result_list
+
+    def _update_protocol_imei(self,id_obj,id_hv,id_uid):
+
+        query = (
+            'svc=unit/update_device_type&params={'
+            f'"itemId":{id_obj},'
+            f'"deviceTypeId":{id_hv},'
+            f'"uniqueId":"{id_uid}"'
+            '}'
+        )
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
+
+    def _update_phone(self,id_obj,phone:str):
+
+        query = (
+            'svc=unit/update_phone&params={'
+            f'"itemId":{id_obj},'
+            f'"phoneNumber":"{phone}"'
+            '}'
+        )
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
 
 
 

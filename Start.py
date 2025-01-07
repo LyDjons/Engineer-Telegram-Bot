@@ -216,7 +216,22 @@ def handle_callback(call):
         bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Демонтаж відправлено в основний чат", parse_mode="MarkdownV2")
 
     elif call.data == "approve_dismantle":
-        print(f"User : {call.from_user.id} name = {call.from_user.first_name} push '{call.data}' message_thread_id = {getattr(call.message, 'message_thread_id', 'No thread ID')}")
+        print(f"User : {call.from_user.id} name = {call.from_user.first_name} "
+              f"push '{call.data}' "
+              f"Chat ID '{call.message.chat.id}' "
+              f"message_thread_id = {getattr(call.message, 'message_thread_id', 'No thread ID')}")
+
+        # Коли в чат падає заявка, то тільки адміністратор або власник може натиснути "Погодити"
+        try:
+            chat_member = bot.get_chat_member(call.message.chat.id, call.from_user.id)
+            print(f"Role: {chat_member.status}")
+            if chat_member.status not in ["administrator","creator"]:
+                return
+        except telebot.apihelper.ApiTelegramException as e:
+            print(f"Ошибка: {e}")
+            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
+            return
+
         # Зберігаємо  ідентифікатор старого повідомлення
         old_message_id = call.message.message_id
 
