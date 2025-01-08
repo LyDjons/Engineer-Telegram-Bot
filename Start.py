@@ -1,13 +1,4 @@
 from datetime import datetime
-from idlelib.colorizer import prog_group_name_to_tag
-from time import sleep
-from unittest.mock import call
-
-from cffi.model import PrimitiveType
-from openpyxl.descriptors import String
-from openpyxl.xml.functions import tostring
-from telebot.asyncio_helper import session
-
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL, ENGINEER_CHAT_ID, THREAD_ID
 from config.config import WIALON_TOKEN
@@ -19,6 +10,7 @@ from WialonLocal.templates.Templates import LOGISTIC_MESSAGE_STATUS
 from loader.ExcellLoader import ExcellLoader
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
+
 # Словник для збереження станів виборів в меню Users
 user_state = {}
 
@@ -237,7 +229,7 @@ def handle_callback(call):
 
         #print(call.message.text)
         # конвертуэмо строку в словник
-        message_dict = json.loads(call.message.text)[0]
+        message_dict = json.loads(call.message.text)
         # отримуэмо значення  "nm"
         #nm_value = message_dict.get("nm")
         # Получаем время отправки сообщения
@@ -254,27 +246,56 @@ def handle_callback(call):
         # Вычисление разницы во времени
         delay = current_datetime - readable_time
 
-        obj = str (f"operation    : {message_dict.get("operation")}\n"
-              f"Назва          : {message_dict.get("nm")}\n"
-              f"Протокол   : {message_dict.get("protocol")}\n"     
-              f"EMEI            : {message_dict.get("uid")}\n"
-              f"short_EMEI : {message_dict.get("uid")[-5:]}\n"
-              f"сім               : {message_dict.get("ph")}")
+        formatted_message = (
+            f"operation    : `{message_dict.get('operation')}`\n"
+            f"Назва          : `{message_dict.get('nm')}`\n"
+            f"Протокол   : `{message_dict.get('protocol')}`\n"
+            f"EMEI            : `{message_dict.get('uid')}`\n"
+            f"shortEMEI    : `{message_dict.get('uid')[-5:]}`\n" 
+            f"Cім               : `{message_dict.get('ph')[-10:]}`\n\n"
+            f"Дата заявки      :  `{readable_time}`\n"
+            f"Підтвердження: `{formatted_datetime}`\n"
+            f"Затримка          : `{delay}`\n"
+            f"Ініціатор            :  `{message_dict.get('creator')}`"
+        )
 
-        info = str (f"Дата заявки      :  {readable_time}\n"
-              f"Підтвердження: {formatted_datetime}\n"
-              f"Затримка          : {delay}\n"
-              f"Ініціатор            :  {call.from_user.username}")
+        try:
+            session = WialonManager(WIALON_URL, WIALON_TOKEN)
+            #print(session._get_info())
 
-        #тут треба видалить обэкт у Віалон Локал, потім видалить повідомлення і написать звіт
+            # Отримуємо об'єкт по EMEI
+            my_json = session._get_list_universal("avl_unit",
+                                            "sys_unique_id",
+                                            f"*{message_dict.get('uid')}*",
+                                            "sys_unique_id", 1, 1 + 256, 0, 10000)
+            if not my_json['items']:
+                print("не найдено EMEI")
+                return
+            id = my_json.get("items")[0].get("id")
+            id_hv = my_json.get("items")[0].get('hw')
+            #protocol = session._device_type(id_hv)
 
-        bot.send_message(call.message.chat.id, f"{obj}\n{info}",message_thread_id=THREAD_ID)
+            #print(f"id = {id}")
+            #print(f"id_hv = {id_hv}")
+            #print(f"protocol = {protocol}")
+
+            #обнуляємо EMEI та телефон. Протокол залишаємо
+            session._update_protocol_imei(id,id_hv,"")
+            session._update_phone(id, "")
+            #видаляємо об'єкт з усіх основних групп крім *історія
+            session._delete_obj_from_groups(id, "", "історія")
+            print(f"Успішно видалений: {my_json.get("items")[0].get("nm")} ")
+            print("Тут необхідно буде добавить в історію")
+
+        except telebot.apihelper.ApiTelegramException as e:
+            print(f"Ошибка: {e}")
+
+        bot.send_message(call.message.chat.id, formatted_message,parse_mode="MarkdownV2", message_thread_id=THREAD_ID)
         bot.delete_message(call.message.chat.id, old_message_id)
 
     elif call.data == "decline_dismantle":
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-
-
+        #bot.delete_message(call.message.chat.id, call.message.message_id)
+        print("Прибери видалення")
 
     # Закриваємо "завантаження" кнопки
     #bot.answer_callback_query(call.message.chat.id)
@@ -480,11 +501,10 @@ def dismantling_emei_equipment(message):
             if len(myjson["wialon"]) ==1:
                 myjson["wialon"][0] = {"operation": "демонтаж", "creator": message.from_user.username, **myjson["wialon"][0] }
                 bot.send_message(message.chat.id,
-                                 f"```\n{json.dumps(myjson["wialon"], 
+                                 f"```\n{json.dumps(myjson["wialon"][0], 
                                     indent=4, ensure_ascii=False)}\n```",
                                      parse_mode = "MarkdownV2",
                                  reply_markup=ask_approve_confirmation("confirm_dismantle"))
-
 
                 user_state[message.from_user.id] = {
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів

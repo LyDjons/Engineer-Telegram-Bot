@@ -125,7 +125,7 @@ class WialonManager:
         data = response.json()
         return data
 
-    def _delete_obj_from_group(self,id_obj, name_group, exception_name_group ):
+    def _delete_obj_from_groups(self,id_obj, name_group, exception_name_group ):
         """
         Дана функція отримує список груп в якій знаходиться об'єкт по id. робимо апдейт груп і виключаємо id об'єкта
         із списка даної групи
@@ -174,7 +174,7 @@ class WialonManager:
 
         return json_result
 
-    def _get_list_universal(self,itemsType,propName,propValueMask,sortType,force,flags,_from,to):
+    def _get_list_universal(self, itemsType: object, propName: object, propValueMask: object, sortType: object, force: object, flags: object, _from: object, to: object) -> object:
         """
         Універсальна ф-кція пошуку елементів в Wialon Local
         :param itemsType: тип шуканих елементів (див. список нижче), якщо залишити порожнім, то пошук здійснюватиметься за всіма типами
@@ -499,6 +499,32 @@ class WialonManager:
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         data = response.json()
         return data
+
+    def _get_id_from_uid(self, uid):
+        """
+        Вказуємо точний uid і отримуємо id об'экта
+        :param uid: EMEI
+        :return: id obj
+        """
+        query = (
+            'svc=core/search_items&params={"spec":{'
+            f'"itemsType":"avl_unit",'
+            f'"propName":"sys_unique_id",'
+            f'"propValueMask":"{uid}",'
+            f'"sortType":"sys_unique_id"'
+            '},'
+            f'"force":{1},'
+            f'"flags":{1},'
+            f'"from":{0},'
+            f'"to":{10000}'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data.get('items')[0].get('id')
+
+
 
 
 
