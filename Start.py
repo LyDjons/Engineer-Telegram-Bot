@@ -109,8 +109,8 @@ def dismantling_gps_menu():
 def ask_approve_confirmation(specificator:str):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
-    button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_dismantle")
-    button_yes2 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_dismantle")
+    button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_dismantle") #бот
+    button_yes2 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_dismantle") #чат
     button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline_dismantle")
 
     if specificator == "confirm_dismantle":
@@ -195,6 +195,7 @@ def handle_callback(call):
         bot.send_message(call.message.chat.id, "Як забажаєте.",reply_markup=engineer_gps_menu())
         return
 
+    #бот
     elif call.data == "confirm_dismantle":
 
         user_state.pop(user_id, None)
@@ -207,6 +208,7 @@ def handle_callback(call):
         bot.delete_message(call.message.chat.id, call.message.message_id)
         bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Демонтаж відправлено в основний чат", parse_mode="MarkdownV2")
 
+    #чат
     elif call.data == "approve_dismantle":
         print(f"User : {call.from_user.id} name = {call.from_user.first_name} "
               f"push '{call.data}' "
@@ -294,12 +296,18 @@ def handle_callback(call):
         bot.delete_message(call.message.chat.id, old_message_id)
 
     elif call.data == "decline_dismantle":
-        #bot.delete_message(call.message.chat.id, call.message.message_id)
+        bot.delete_message(call.message.chat.id, call.message.message_id)
         print("Прибери видалення")
 
     # Закриваємо "завантаження" кнопки
     #bot.answer_callback_query(call.message.chat.id)
+
+    # обнуляємо навігацію користувача (історію його виборів в меню)
+    user_state.pop(user_id, None)
+    print(f"Обнуляємо стан користувача: {user_state}")
+
     bot.answer_callback_query(call.id)
+
 
 
 # оброботчик, для меню, який першим оброблюэ повідомлення від користувача
