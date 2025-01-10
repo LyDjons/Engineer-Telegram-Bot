@@ -1,4 +1,6 @@
 from datetime import datetime
+import re
+
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL, ENGINEER_CHAT_ID, THREAD_ID
 from config.config import WIALON_TOKEN
@@ -110,7 +112,7 @@ def dismantling_gps_menu():
     markup.add( back)
     return markup
 
-def create_inline_keyboard(claster = '-'):
+def create_inline_keyboard(change_claster = '-'):
     keyboard = types.InlineKeyboardMarkup()
 
     # Создание кнопок
@@ -118,19 +120,16 @@ def create_inline_keyboard(claster = '-'):
     btn2 = types.InlineKeyboardButton("Власність", callback_data="change_owner")
     btn3 = types.InlineKeyboardButton("Група", callback_data="change_group")
     btn4 = types.InlineKeyboardButton("Підгрупа", callback_data="change_subgroup")
-    btn5 = types.InlineKeyboardButton("❌", callback_data="cancel_clstr")
-    btn6 = types.InlineKeyboardButton("❌", callback_data="cancel_owner")
-    btn7 = types.InlineKeyboardButton("❌", callback_data="cancel_group")
-    btn8 = types.InlineKeyboardButton("❌", callback_data="cancel_subgroup")
+
 
     # Визуально уменьшаем кнопки добавлением пробела
-    claster = types.InlineKeyboardButton(f"{claster}", callback_data="toggle_claster")
+    change_claster = types.InlineKeyboardButton(f"{change_claster}", callback_data="change_claster")
 
     # Добавление кнопок в клавиатуру
-    keyboard.add(btn1,claster, btn5)
-    keyboard.add(btn2, btn6)
-    keyboard.add(btn3, btn7)
-    keyboard.add(btn4, btn8)
+    keyboard.add(btn1,change_claster)
+    keyboard.add(btn2)
+    keyboard.add(btn3)
+    keyboard.add(btn4)
 
     return keyboard
 
@@ -154,6 +153,7 @@ def ask_confirmation(message, count:int, spec_message: str, specificator="simple
     button_yes = types.InlineKeyboardButton("ТАК", callback_data="yes")
     button_find_yes = types.InlineKeyboardButton("ТАК", callback_data="yes_find")
     button_dismantling_show = types.InlineKeyboardButton("ТАК", callback_data="show_dismantling")
+    button_mantling_show = types.InlineKeyboardButton("ТАК", callback_data="show_mantling")
 
     button_no = types.InlineKeyboardButton("НІ", callback_data="no")
 
@@ -164,31 +164,75 @@ def ask_confirmation(message, count:int, spec_message: str, specificator="simple
         spec_message = f"Зможу вивести тільки перші {count if count<10 else 10}" if count>1 else ""
     elif specificator == "dismantling":
         markup.add(button_dismantling_show, button_no)
+    elif specificator == "mantling":
+        markup.add(button_mantling_show, button_no)
 
     bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. {spec_message}\n Вивести результат?", reply_markup=markup)
 
 def test_function(message):
-    bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
+    bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери\n"
+                                      f"message.id ={message.id}\n"
+                                      f"message.chat.id = {message.chat.id}")
 
 
-@bot.callback_query_handler(func=lambda call: call.data == "toggle_claster")
+
+@bot.callback_query_handler(func=lambda call: call.data == "change_claster")
 def toggle_claster(call):
+    text ={
+        "Организация": "Агропрогрес",
+        "Модель": "BiTrek",
+        "Серия": "868",
+        "ИМЕИ": "355234055184366",
+        "ИМЕИ2": "",
+        "Телефон": "0674476137",
+    }
+    text2 = {
+        "Операція": "",
+        "Кластер": "",
+        "Власність": "",
+        "Марка": "",
+        "Модель": "",
+        "Номер": "",
+        "Водитель": "",
+        "ініціатор":""
 
-   keyboard_data = call.message.json.get('reply_markup').get('inline_keyboard')
-   button_text = get_button_text_by_callback('toggle_claster', keyboard_data)
-   next_index = button_state["claster"].index(button_text)+1
-   if next_index > len(button_state["claster"])-1:
-       next_index = 1
-   print(button_state["claster"][next_index])
-   keyboard = create_inline_keyboard(button_state["claster"][next_index])
+    }
+    # Используем обратные кавычки для отображения в формате кода
+    #formatted_text = "```\n" + json.dumps(text, indent=4, ensure_ascii=False) + "\n```"
+    formatted_text = f"```\n{json.dumps(text, indent=4, ensure_ascii=False)}\n```\n\n```\n{json.dumps(text2, indent=4, ensure_ascii=False)}\n```"
 
-   # Обновляем сообщение с новой клавиатурой
-   bot.edit_message_text(
-       "Текущее состояние кнопки было обновлено.",
-       chat_id=call.message.chat.id,
-       message_id=call.message.message_id,
-       reply_markup=keyboard
-   )
+    #дані всіх кнопок
+    keyboard_data = call.message.json.get('reply_markup').get('inline_keyboard')
+
+    # Текст натиснутої кнопки
+    button_text = get_button_text_by_callback('change_claster', keyboard_data)
+
+    next_index = button_state["claster"].index(button_text)+1
+    if next_index > len(button_state["claster"])-1:
+        next_index = 1
+    #print(button_state["claster"][next_index])
+    #print(call.message.text)
+
+    #в повідомленні 2 json. Витягуємо їх із call.message.text та перетворюємо в json для подальшого обробітку
+    json_match = re.findall(r'\{(.*?)\}',call.message.text,re.DOTALL)
+    json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+    json1 = json.loads(json1)
+    json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+    json2 = json.loads(json2)
+
+    print(json1)
+    print(json2)
+
+    keyboard = create_inline_keyboard(button_state["claster"][next_index])
+
+    # Обновляем сообщение с новой клавиатурой
+    bot.edit_message_text(
+        formatted_text,
+         chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        reply_markup=keyboard,
+        parse_mode='Markdown'
+    )
 
 # Функция для поиска текста кнопки по значению callback_data
 def get_button_text_by_callback(callback_data, keyboard_data):
@@ -197,7 +241,6 @@ def get_button_text_by_callback(callback_data, keyboard_data):
             if button['callback_data'] == callback_data:
                 return button['text']  # Возвращаем текст кнопки
     return None  # Если кнопка не найдена
-
 
 @bot.message_handler(commands=['get_chat_id'])
 def get_chat_id(message):
@@ -211,7 +254,8 @@ def start(message):
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
 
 @bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","yes_find"
-                                                            ,"show_dismantling","approve_dismantle","decline_dismantle"])
+                                                            ,"show_dismantling","show_mantling"
+                                                            ,"approve_dismantle","decline_dismantle"])
 def handle_callback(call):
     print(f"call data = {call.data}")
 
@@ -230,6 +274,12 @@ def handle_callback(call):
             bot.send_message(call.message.chat.id, f"```\n{json.dumps(item, indent=4, ensure_ascii=False)}\n```",
                              parse_mode="MarkdownV2")
 
+    elif call.data == "show_mantling":
+
+        for index, item in enumerate(user_state[user_id].get("excell_json")):
+            if index == 10: break
+            bot.send_message(call.message.chat.id, f"```\n{json.dumps(item, indent=4, ensure_ascii=False)}\n```",
+                             parse_mode="MarkdownV2")
 
     elif call.data == "yes" and user_state[user_id].get("wialon_json"):
 
@@ -365,8 +415,6 @@ def handle_callback(call):
 
     bot.answer_callback_query(call.id)
 
-
-
 # оброботчик, для меню, який першим оброблюэ повідомлення від користувача
 @bot.message_handler(func=lambda message: message.text in ['Вантажний автотранспорт', 'Комбайни'])
 def specific_handler(message):
@@ -497,7 +545,9 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "В процесі розробки")
 
     elif message.text in 'Монтаж':
-        bot.send_message(message.chat.id, "Функція монтажу",reply_markup=create_inline_keyboard())
+        bot.send_message(message.chat.id, "Введіть EMEI повністю або частину:")
+        bot.register_next_step_handler(message, mantling_emei_equipment)
+
 
     elif message.text in 'Демонтаж':
         bot.send_message(message.chat.id, "Меню демонтажу", reply_markup=dismantling_gps_menu())
@@ -507,7 +557,11 @@ def menu_handler(message):
         bot.register_next_step_handler(message, find_sim_function)
 
     elif message.text == 'Ребут':
-        bot.send_message(message.chat.id, "Колись зроблюю.")
+        bot.send_message(message.chat.id, "Починаю чистку історії переписки.")
+        bot.send_message(message.chat.id, f"/start")
+
+
+
     elif message.text == 'ДУ-02 => Wialon.cvs':
         bot.send_message(message.chat.id, "Відправте тарувальний файл з софту ДУ-02, я його переконвертую та "
                                           "поверну шаблон тарувальної таблиці для Wialon в форматі *.cvs")
@@ -542,7 +596,73 @@ def find_emei_function(message):
                                               f" {message.text} в кінці EMEI, якщо знайду такий."
                                               "\nСпробуйте ввести на одну цифру більше для уточнення")
         result_json = {"Excell":result[:1]}
-        print(bot.send_message(message.chat.id, f"```\n{json.dumps(result_json, indent=4, ensure_ascii=False)}\n```",parse_mode="MarkdownV2"))
+        bot.send_message(message.chat.id, f"```\n{json.dumps(result_json, indent=4, ensure_ascii=False)}\n```",parse_mode="MarkdownV2")
+
+    else:
+        bot.send_message(message.chat.id, "Ви ввели не число а якусь беліберду.")
+
+def mantling_emei_equipment(message):
+    if message.text.isdigit():
+        #bot.send_message(message.chat.id, "Ви ввели число. Починаю пошук")
+        text2 = {
+            "Операція": "",
+            "Кластер": "",
+            "Власність": "",
+            "Марка": "",
+            "Модель": "",
+            "Номер": "",
+            "Водитель": "",
+            "ініціатор": ""
+        }
+        try:
+            file_excel = ExcellLoader()
+            json_list = file_excel.create_base_list()
+
+            result = file_excel.find_emei(message.text, json_list)
+
+
+            for item in result:
+                del item["Склад"]
+            print(json.dumps(result, indent=4, ensure_ascii=False))
+
+
+
+            if len(result) > 1:
+                ask_confirmation(message, len(result),
+                                 "\nЯ зможу зробити монтаж тільки в тому випадку, коли EMEI унікальний.\n"
+                                 "Інакше виведу результат пошуку але не більше 10!", "mantling")
+                user_state[message.from_user.id] = {
+                    'excell_json': result}  # Зберігаємо list_json в словник станів
+
+            if len(result) == 1:
+
+
+                formatted_text = f"```\n{json.dumps(result[0], indent=4, ensure_ascii=False)}\n```\n\n```\n{json.dumps(text2, indent=4, ensure_ascii=False)}\n```"
+
+                """result[0] = {"operation": "монтаж", "creator": message.from_user.username,
+                                       **result[0]}"""
+                keyboard = create_inline_keyboard()
+                bot.send_message(message.chat.id,formatted_text,
+                                    parse_mode = "MarkdownV2",
+                                    reply_markup=keyboard
+                                 )
+                """bot.send_message(message.chat.id,
+                                 f"```\n{json.dumps(result,
+                                                    indent=4, ensure_ascii=False)}\n```",
+                                 parse_mode="MarkdownV2",
+                                 #reply_markup=ask_approve_confirmation("confirm_mantle")
+                                 )"""
+
+                """user_state[message.from_user.id] = {
+                    'wialon_json': result}  # Зберігаємо list_json в словник станів"""
+
+            if len(result) == 0:
+                bot.send_message(message.chat.id, "Я нічого не знайшов. Спробуйте ще раз")
+
+
+        except Exception as e:
+            print(f"Сталася помилка: {e}")
+
 
     else:
         bot.send_message(message.chat.id, "Ви ввели не число а якусь беліберду.")
