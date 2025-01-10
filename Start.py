@@ -9,10 +9,14 @@ import json
 from WialonLocal.templates.Templates import LOGISTIC_MESSAGE_STATUS
 from loader.ExcellLoader import ExcellLoader
 
+
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # Словник для збереження станів виборів в меню Users
 user_state = {}
+
+# Состояния кнопок (начальные значения)
+button_state = {"claster": ["-","ЧІМК","АП","АК","CА","БА"]}
 
 # Головнне меню
 def main_menu():
@@ -106,6 +110,30 @@ def dismantling_gps_menu():
     markup.add( back)
     return markup
 
+def create_inline_keyboard(claster = '-'):
+    keyboard = types.InlineKeyboardMarkup()
+
+    # Создание кнопок
+    btn1 = types.InlineKeyboardButton("Клатер", callback_data="change_clstr")
+    btn2 = types.InlineKeyboardButton("Власність", callback_data="change_owner")
+    btn3 = types.InlineKeyboardButton("Група", callback_data="change_group")
+    btn4 = types.InlineKeyboardButton("Підгрупа", callback_data="change_subgroup")
+    btn5 = types.InlineKeyboardButton("❌", callback_data="cancel_clstr")
+    btn6 = types.InlineKeyboardButton("❌", callback_data="cancel_owner")
+    btn7 = types.InlineKeyboardButton("❌", callback_data="cancel_group")
+    btn8 = types.InlineKeyboardButton("❌", callback_data="cancel_subgroup")
+
+    # Визуально уменьшаем кнопки добавлением пробела
+    claster = types.InlineKeyboardButton(f"{claster}", callback_data="toggle_claster")
+
+    # Добавление кнопок в клавиатуру
+    keyboard.add(btn1,claster, btn5)
+    keyboard.add(btn2, btn6)
+    keyboard.add(btn3, btn7)
+    keyboard.add(btn4, btn8)
+
+    return keyboard
+
 def ask_approve_confirmation(specificator:str):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
@@ -141,6 +169,35 @@ def ask_confirmation(message, count:int, spec_message: str, specificator="simple
 
 def test_function(message):
     bot.send_message(message.chat.id, f"Тестова функція. Тут нічо немає, тільки квадробобери")
+
+
+@bot.callback_query_handler(func=lambda call: call.data == "toggle_claster")
+def toggle_claster(call):
+
+   keyboard_data = call.message.json.get('reply_markup').get('inline_keyboard')
+   button_text = get_button_text_by_callback('toggle_claster', keyboard_data)
+   next_index = button_state["claster"].index(button_text)+1
+   if next_index > len(button_state["claster"])-1:
+       next_index = 1
+   print(button_state["claster"][next_index])
+   keyboard = create_inline_keyboard(button_state["claster"][next_index])
+
+   # Обновляем сообщение с новой клавиатурой
+   bot.edit_message_text(
+       "Текущее состояние кнопки было обновлено.",
+       chat_id=call.message.chat.id,
+       message_id=call.message.message_id,
+       reply_markup=keyboard
+   )
+
+# Функция для поиска текста кнопки по значению callback_data
+def get_button_text_by_callback(callback_data, keyboard_data):
+    for row in keyboard_data:
+        for button in row:
+            if button['callback_data'] == callback_data:
+                return button['text']  # Возвращаем текст кнопки
+    return None  # Если кнопка не найдена
+
 
 @bot.message_handler(commands=['get_chat_id'])
 def get_chat_id(message):
@@ -436,8 +493,11 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "Введіть EMEI повністю або частину:")
         bot.register_next_step_handler(message, dismantling_emei_equipment)
 
-    elif message.text in ['Монтаж', 'Заміна SIM','Демонтаж по держ. номеру']:
+    elif message.text in ['Заміна SIM','Демонтаж по держ. номеру']:
         bot.send_message(message.chat.id, "В процесі розробки")
+
+    elif message.text in 'Монтаж':
+        bot.send_message(message.chat.id, "Функція монтажу",reply_markup=create_inline_keyboard())
 
     elif message.text in 'Демонтаж':
         bot.send_message(message.chat.id, "Меню демонтажу", reply_markup=dismantling_gps_menu())
