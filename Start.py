@@ -1,6 +1,5 @@
 from datetime import datetime
 import re
-
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL, ENGINEER_CHAT_ID, THREAD_ID
 from config.config import WIALON_TOKEN
@@ -13,12 +12,19 @@ from loader.ExcellLoader import ExcellLoader
 
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-
+message = ""  # Спочатку ініціалізуємо змінну
 # Словник для збереження станів виборів в меню Users
 user_state = {}
 
 # Состояния кнопок (начальные значения)
-button_state = {"claster": ["-","ЧІМК","АП","АК","CА","БА"]}
+button_state = {"claster": ["-","ЧІМК","АП","АК","CА","БА"],
+                "ownership": ["-","найманий","власний"],
+                "власний": ["-","легкові","вантажні","трактора","комбайни","автобус","спецтехніка"],
+                "найманий": ["-","вантажні","комбайни","авіація","трактора"],
+                "легкові": ["-","патруль","безпека","інженерна","агрономічна","інші", "керівництво"],
+                "вантажні": ["-","1 група","2 група"],
+                "трактора": ["-","важкі","легкі"],
+                }
 
 # Головнне меню
 def main_menu():
@@ -112,24 +118,62 @@ def dismantling_gps_menu():
     markup.add( back)
     return markup
 
-def create_inline_keyboard(change_claster = '-'):
+def mantle_stage_1_inline_keyboard(change_claster ='-', change_ownership='-', change_group='-', change_subgroup='-'):
     keyboard = types.InlineKeyboardMarkup()
 
     # Создание кнопок
-    btn1 = types.InlineKeyboardButton("Клатер", callback_data="change_clstr")
-    btn2 = types.InlineKeyboardButton("Власність", callback_data="change_owner")
-    btn3 = types.InlineKeyboardButton("Група", callback_data="change_group")
-    btn4 = types.InlineKeyboardButton("Підгрупа", callback_data="change_subgroup")
+    btn1 = types.InlineKeyboardButton("Клатер", callback_data="None")
+    btn2 = types.InlineKeyboardButton("Власність", callback_data="None")
+    btn3 = types.InlineKeyboardButton("Група", callback_data="None")
+    btn4 = types.InlineKeyboardButton("Підгрупа", callback_data="None")
+    confirm = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_mantling")
+    cancel_mantle = types.InlineKeyboardButton("Відмінити ❌", callback_data="cancel_mantling")
 
 
-    # Визуально уменьшаем кнопки добавлением пробела
     change_claster = types.InlineKeyboardButton(f"{change_claster}", callback_data="change_claster")
+    change_ownership = types.InlineKeyboardButton(f"{change_ownership}", callback_data="change_ownership")
+    change_group = types.InlineKeyboardButton(f"{change_group}", callback_data="change_group")
+    change_subgroup = types.InlineKeyboardButton(f"{change_subgroup}", callback_data="change_subgroup")
 
     # Добавление кнопок в клавиатуру
     keyboard.add(btn1,change_claster)
-    keyboard.add(btn2)
-    keyboard.add(btn3)
-    keyboard.add(btn4)
+    keyboard.add(btn2,change_ownership)
+    keyboard.add(btn3,change_group)
+    keyboard.add(btn4,change_subgroup)
+    keyboard.add(confirm)
+    keyboard.add(cancel_mantle)
+
+    return keyboard
+
+def mantle_stage_2_inline_keyboard(text_mark='-',text_model='-',text_number='-',text_driver='-'):
+    keyboard = types.InlineKeyboardMarkup()
+
+    # Создание кнопок
+    btn1 = types.InlineKeyboardButton("Марка", callback_data="None")
+    btn2 = types.InlineKeyboardButton("Модель", callback_data="None")
+    btn3 = types.InlineKeyboardButton("Номер", callback_data="None")
+    btn4 = types.InlineKeyboardButton("Водій", callback_data="None")
+    confirm = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_mantling2")
+    cancel_mantle = types.InlineKeyboardButton("Назад👈 ", callback_data="back_mantling")
+    button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="cancel_mantling")
+
+    change_mark = types.InlineKeyboardButton(f"{text_mark}", callback_data="change_mark")
+    change_model = types.InlineKeyboardButton(f"{text_model}", callback_data="change_model")
+    change_number = types.InlineKeyboardButton(f"{text_number}", callback_data="change_number")
+    change_driver = types.InlineKeyboardButton(f"{text_driver}", callback_data="change_driver")
+    clear_mark = types.InlineKeyboardButton(f"❌", callback_data="clear_mark")
+    clear_model = types.InlineKeyboardButton(f"❌", callback_data="clear_model")
+    clear_number = types.InlineKeyboardButton(f"❌", callback_data="clear_number")
+    clear_driver = types.InlineKeyboardButton(f"❌", callback_data="clear_driver")
+
+    # Добавление кнопок в клавиатуру
+    keyboard.add(btn1,change_mark,clear_mark)
+    keyboard.add(btn2,change_model,clear_model)
+    keyboard.add(btn3,change_number,clear_number)
+    keyboard.add(btn4,change_driver,clear_driver)
+    keyboard.add(confirm)
+    keyboard.add(cancel_mantle)
+    keyboard.add(button_no)
 
     return keyboard
 
@@ -174,65 +218,222 @@ def test_function(message):
                                       f"message.id ={message.id}\n"
                                       f"message.chat.id = {message.chat.id}")
 
+def user_input_text_mantling(message):
+
+    global mantling_text  # Якщо хочете використовувати глобальну змінну
+    mantling_text = message.text  # Зберігаємо введене значення в змінну
+    bot.send_message(message.chat.id, f"Ваша марка авто: {mantling_text}")
 
 
-@bot.callback_query_handler(func=lambda call: call.data == "change_claster")
-def toggle_claster(call):
-    text ={
-        "Организация": "Агропрогрес",
-        "Модель": "BiTrek",
-        "Серия": "868",
-        "ИМЕИ": "355234055184366",
-        "ИМЕИ2": "",
-        "Телефон": "0674476137",
-    }
-    text2 = {
-        "Операція": "",
-        "Кластер": "",
-        "Власність": "",
-        "Марка": "",
-        "Модель": "",
-        "Номер": "",
-        "Водитель": "",
-        "ініціатор":""
+def check_mantling_status(claster_text, ownership_text, group_text, subgroup_text):
+    """
+    Функція перевіряє щоб всі групи були заповнені правильно
+    :param claster_text: кластер
+    :param ownership_text: власність
+    :param group_text: група
+    :param subgroup_text: підгрупа
+    :return: True щк False
+    """
+    if claster_text == '-': return False
+    if ownership_text == '-': return False
+    if ownership_text == 'найманий' :return True
+    if subgroup_text == '-' and group_text == '-': return False
+    if subgroup_text == '-':
+        if group_text in ["-","легкові","вантажні","трактора"]: return False
+    return True
 
-    }
-    # Используем обратные кавычки для отображения в формате кода
-    #formatted_text = "```\n" + json.dumps(text, indent=4, ensure_ascii=False) + "\n```"
-    formatted_text = f"```\n{json.dumps(text, indent=4, ensure_ascii=False)}\n```\n\n```\n{json.dumps(text2, indent=4, ensure_ascii=False)}\n```"
 
-    #дані всіх кнопок
+@bot.callback_query_handler(func=lambda call: call.data in ["change_claster","change_ownership","confirm_mantling",
+                                                            "change_group","change_subgroup","cancel_mantling",
+                                                            "back_mantling","change_mark"])
+def callback_mantling(call):
+
+    # Текст натиснутих кнопок
     keyboard_data = call.message.json.get('reply_markup').get('inline_keyboard')
+    claster_text = get_button_text_by_callback('change_claster', keyboard_data)
+    ownership_text = get_button_text_by_callback('change_ownership', keyboard_data)
+    group_text = get_button_text_by_callback('change_group', keyboard_data)
+    subgroup_text = get_button_text_by_callback('change_subgroup', keyboard_data)
+    """print(f"Дані кнопок :\n "
+                            f"{claster_text}\n"
+                            f"{ownership_text}\n"
+                            f"{group_text}\n"
+                            f"{subgroup_text}"
+                            )"""
+    #якщо натиснута кнопка вибору кластеру
+    if call.data == "change_claster":
 
-    # Текст натиснутої кнопки
-    button_text = get_button_text_by_callback('change_claster', keyboard_data)
+        #по отриманому значенні кнопки отримуємо індекс наступної в словнику по ключу claster
+        next_index = button_state["claster"].index(claster_text) + 1
+        if next_index > len(button_state["claster"]) - 1:
+            next_index = 1
+        keyboard = mantle_stage_1_inline_keyboard(change_claster=button_state["claster"][next_index],
+                                                  change_ownership=ownership_text,
+                                                  change_group=group_text,
+                                                  change_subgroup=subgroup_text)
 
-    next_index = button_state["claster"].index(button_text)+1
-    if next_index > len(button_state["claster"])-1:
-        next_index = 1
-    #print(button_state["claster"][next_index])
-    #print(call.message.text)
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=keyboard
+        )
 
-    #в повідомленні 2 json. Витягуємо їх із call.message.text та перетворюємо в json для подальшого обробітку
-    json_match = re.findall(r'\{(.*?)\}',call.message.text,re.DOTALL)
-    json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
-    json1 = json.loads(json1)
-    json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
-    json2 = json.loads(json2)
+    if call.data == "change_ownership":
+        # дані всіх кнопок
+        next_index = button_state["ownership"].index(ownership_text) + 1
+        if next_index > len(button_state["ownership"]) - 1:
+            next_index = 1
+        keyboard = mantle_stage_1_inline_keyboard(change_claster=claster_text,
+                                                  change_ownership=button_state["ownership"][next_index],
+                                                  change_group="-",
+                                                  change_subgroup="-")
 
-    print(json1)
-    print(json2)
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=keyboard
+        )
 
-    keyboard = create_inline_keyboard(button_state["claster"][next_index])
+    if call.data == "change_group":
 
-    # Обновляем сообщение с новой клавиатурой
-    bot.edit_message_text(
-        formatted_text,
-         chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        reply_markup=keyboard,
-        parse_mode='Markdown'
-    )
+        # залежно від власності вибираємо необхідний список груп
+        key_list = "-"
+        if ownership_text == "власний":
+            key_list = "власний"
+        if ownership_text == "найманий":
+            key_list = "найманий"
+
+
+        next_index = button_state[key_list].index(group_text) + 1
+        if next_index > len(button_state[key_list]) - 1:
+            next_index = 1
+        keyboard = mantle_stage_1_inline_keyboard(change_claster=claster_text,
+                                                  change_ownership=ownership_text,
+                                                  change_group=button_state[key_list][next_index],
+                                                  change_subgroup="-")
+
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=keyboard
+        )
+
+    # залежно від групи вибираємо необхідний список підгруп
+    if call.data == "change_subgroup":
+        key_list = "-"
+        if group_text == "легкові":
+            key_list = "легкові"
+        if group_text == "вантажні":
+            key_list = "вантажні"
+        if group_text == "трактора":
+            key_list = "трактора"
+
+        else:
+            if key_list == '-': return
+        next_index = button_state[key_list].index(subgroup_text) + 1
+        if next_index > len(button_state[key_list]) - 1:
+            next_index = 1
+
+        subgroup_text = button_state[key_list][next_index]
+
+        # для найманої техніки відсутні підгрупи
+        if ownership_text == "найманий":
+            subgroup_text = "-"
+
+        #тут якщо підгрупа не може змінюватись (бо наймана техніка) може виникати помилка
+        #бо стан не змінюється, тому берем в try
+        try:
+
+            keyboard = mantle_stage_1_inline_keyboard(change_claster=claster_text,
+                                                      change_ownership=ownership_text,
+                                                      change_group=group_text,
+                                                      change_subgroup=subgroup_text)
+
+            bot.edit_message_reply_markup(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                reply_markup=keyboard
+            )
+        except Exception as e:
+            #print(f"Нема чого оновлювати: {e}")
+            pass
+
+
+    if call.data == "confirm_mantling":
+
+        if check_mantling_status(claster_text,ownership_text,group_text,subgroup_text) == False:
+            bot.send_message(call.message.chat.id,"Виберіть правильно кластер, власність, групи та підгрупи")
+            return
+        #в повідомленні 2 json. Витягуємо їх із call.message.text та перетворюємо в json для подальшого обробітку
+        json_match = re.findall(r'\{(.*?)\}',call.message.text,re.DOTALL)
+        json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+        json1 = json.loads(json1)
+        json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+        json2 = json.loads(json2)
+
+        #print(json1)
+        #print(json2)
+        #print(f"all button: {call.message.json.get('reply_markup').get('inline_keyboard')}")
+        text_cluster = call.message.json.get('reply_markup').get('inline_keyboard')[0][1].get('text')
+
+        json2['Кластер'] = text_cluster
+        json2['Операція'] = 'Монтаж'
+        json2['Власність'] = ownership_text
+        json2['Група'] = group_text
+        json2['Підгрупа'] = subgroup_text
+
+
+        # Используем обратные кавычки для отображения в формате кода
+        # formatted_text = "```\n" + json.dumps(text, indent=4, ensure_ascii=False) + "\n```"
+        formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4,ensure_ascii=False)}\n```"
+
+        #keyboard = mantle_stage_1_inline_keyboard(change_claster=text_cluster)
+        keyboard2 = mantle_stage_2_inline_keyboard()
+
+        # Обновляем сообщение с новой клавиатурой
+        bot.edit_message_text(
+            formatted_text,
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=keyboard2,
+            parse_mode='Markdown'
+        )
+
+    if call.data == "back_mantling":
+        json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+        json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+        json1 = json.loads(json1)
+        json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+        json2 = json.loads(json2)
+
+
+        text_cluster = call.message.json.get('reply_markup').get('inline_keyboard')[0][1].get('text')
+
+        # Используем обратные кавычки для отображения в формате кода
+        #formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
+
+
+        keyboard = mantle_stage_1_inline_keyboard(change_claster=json2['Кластер'],
+                                                  change_ownership=json2['Власність'],
+                                                  change_group=json2['Група'],
+                                                  change_subgroup=json2['Підгрупа'])
+
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=keyboard
+        )
+
+    if call.data == "change_mark":
+        bot.send_message(call.message.chat.id, "Введіть марку авто:")
+        bot.register_next_step_handler(call.message, user_input_text_mantling)
+        print(message)
+
+
+    if call.data == "cancel_mantling":
+        # видаляємо повідомлення
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+
 
 # Функция для поиска текста кнопки по значению callback_data
 def get_button_text_by_callback(callback_data, keyboard_data):
@@ -548,7 +749,6 @@ def menu_handler(message):
         bot.send_message(message.chat.id, "Введіть EMEI повністю або частину:")
         bot.register_next_step_handler(message, mantling_emei_equipment)
 
-
     elif message.text in 'Демонтаж':
         bot.send_message(message.chat.id, "Меню демонтажу", reply_markup=dismantling_gps_menu())
 
@@ -559,8 +759,6 @@ def menu_handler(message):
     elif message.text == 'Ребут':
         bot.send_message(message.chat.id, "Починаю чистку історії переписки.")
         bot.send_message(message.chat.id, f"/start")
-
-
 
     elif message.text == 'ДУ-02 => Wialon.cvs':
         bot.send_message(message.chat.id, "Відправте тарувальний файл з софту ДУ-02, я його переконвертую та "
@@ -608,6 +806,8 @@ def mantling_emei_equipment(message):
             "Операція": "",
             "Кластер": "",
             "Власність": "",
+            "Група": "",
+            "Підгрупа": "",
             "Марка": "",
             "Модель": "",
             "Номер": "",
@@ -641,8 +841,10 @@ def mantling_emei_equipment(message):
 
                 """result[0] = {"operation": "монтаж", "creator": message.from_user.username,
                                        **result[0]}"""
-                keyboard = create_inline_keyboard()
-                bot.send_message(message.chat.id,formatted_text,
+                keyboard = mantle_stage_1_inline_keyboard()
+                bot.send_message(
+                                    message.chat.id,
+                                    formatted_text,
                                     parse_mode = "MarkdownV2",
                                     reply_markup=keyboard
                                  )
