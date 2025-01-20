@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone, timedelta
 from typing import Dict
+from shapely.geometry import Polygon
 from unicodedata import category
 from webbrowser import Error
 
@@ -523,6 +524,145 @@ class WialonManager:
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         data = response.json()
         return data.get('items')[0].get('id')
+
+    def _get_geofences(self,id_creators="*145|47|163|249|368*"):
+        """
+        Функція повертає json з усіма полями в основних ресурсах, де id ресурсів можна передати.
+        :param id_creators: id ресурсів де знаходяться основні поля (чи юзерів чи ресурсів уточнити)
+        :return: json
+        """
+        query = (
+            'svc=core/search_items&params={'
+            '"spec":{'
+                '"itemsType":"avl_resource",'
+                '"propName":"zones_library,sys_user_creator",'
+                f'"propValueMask":"**,{id_creators}",'
+                '"sortType":"zones_library",'
+                '"propType":"propitemname"'
+                '},'
+            '"force":"1",'
+            '"flags":"4097",'
+            '"from":"0","to":"100000"'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
+
+    def _get_geofense_ifo(self,resourse_id,geofence_id):
+        """
+        Отримуємо дані геозон по ID ресурса та list[] з ID полів
+        :param resourse_id:
+        :param geofence_id:
+        :return:
+        """
+        query = (
+            'svc=resource/get_zone_data&params={'
+            f'"itemId":"{resourse_id}",'
+            '"col":"",'
+            '"flags":"28"'
+            '}'
+        )
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
+
+    def _get_id_from_name_resource(self,name_resource:str):
+        """
+        Функція повертає ID ресурса
+
+        :param name_resource: ім'я ресурса
+        :return: id
+        """
+        query = (
+            'svc=core/search_items&params={'
+            '"spec":{'
+            '"itemsType":"avl_resource",'
+            '"propName":"sys_name",'
+            f'"propValueMask":"{name_resource}",'
+            '"sortType":"sys_name"'    
+            '},'
+            '"force":"1",'
+            '"flags":"1",'
+            '"from":"0","to":"100000"'
+            '}'
+        )
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data.get("items")[0].get('id')
+
+    def _get_user_id(self,user_name):
+        """
+        Отримуємо ID User за ім'ям
+        :param user_name: ім'я користувача
+        :return: id:int
+        """
+        query = (
+            'svc=core/search_items&params={'
+            '"spec":{'
+            '"itemsType": "user",'
+            '"propName":"sys_name",'
+            f'"propValueMask":"{user_name}",'
+            '"sortType":"sys_name"'
+            '},'
+            '"force":"1",'
+            '"flags":"1",'
+            '"from":"0","to":"100000"'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data.get('items')[0].get('id')
+
+    def _get_not_valid_geofences_list(self, name_resource:str):
+        """
+        Функція повертає json де вказано список полів з неправильними геометричними контурами
+        :param name_resource: ім'я ресурсу
+        :return: json
+        """
+        def is_valid_contour(points):
+            # Преобразуем список точек в замкнутую последовательность
+            points = [(p['x'], p['y']) for p in points]
+            points.append(points[0])  # Замкнем контур
+
+            # Создаем многоугольник из точек
+            polygon = Polygon(points)
+
+            # Проверяем, является ли этот многоугольник валидным
+            if polygon.is_valid:
+                return True
+            else:
+                return False
+
+        json = {
+            "name": name_resource,
+            "count_geofences": None,
+            "valid": None,
+            "not_valid": None,
+            "list_not_valid": []
+        }
+
+        id = self._get_id_from_name_resource(name_resource)
+
+        count_valid = 0
+        list_no_valid = []
+        json["count_geofences"] =len(self._get_geofense_ifo(id,""))
+        for item in self._get_geofense_ifo(id,""):
+            #print(f"id = {item['id']}  name = {item['n']}  p = {item['p']}")
+            is_valid = is_valid_contour(item['p'])
+            if is_valid: count_valid = count_valid + 1
+            if not is_valid: list_no_valid.append(item['n'])
+
+
+        json["valid"] = count_valid
+        json["not_valid"] = len(list_no_valid)
+        json["list_not_valid"] = list_no_valid
+
+        return json
+
+
 
 
 
