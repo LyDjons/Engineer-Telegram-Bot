@@ -1,5 +1,9 @@
 from datetime import datetime
 import re
+
+from click.decorators import pass_meta_key
+from telebot.asyncio_helper import delete_message
+
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL, ENGINEER_CHAT_ID, THREAD_ID
 from config.config import WIALON_TOKEN
@@ -12,9 +16,11 @@ from loader.ExcellLoader import ExcellLoader
 
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-message = ""  # Спочатку ініціалізуємо змінну
+message_mantle = "-"  # Спочатку ініціалізуємо змінну
+mantling_state = {}
 # Словник для збереження станів виборів в меню Users
 user_state = {}
+history_msg_mantling = {}
 
 # Состояния кнопок (начальные значения)
 button_state = {"claster": ["-","ЧІМК","АП","АК","CА","БА"],
@@ -161,16 +167,30 @@ def mantle_stage_2_inline_keyboard(text_mark='-',text_model='-',text_number='-',
     change_model = types.InlineKeyboardButton(f"{text_model}", callback_data="change_model")
     change_number = types.InlineKeyboardButton(f"{text_number}", callback_data="change_number")
     change_driver = types.InlineKeyboardButton(f"{text_driver}", callback_data="change_driver")
-    clear_mark = types.InlineKeyboardButton(f"❌", callback_data="clear_mark")
-    clear_model = types.InlineKeyboardButton(f"❌", callback_data="clear_model")
-    clear_number = types.InlineKeyboardButton(f"❌", callback_data="clear_number")
-    clear_driver = types.InlineKeyboardButton(f"❌", callback_data="clear_driver")
+    clear_mark = types.InlineKeyboardButton(f"🔄", callback_data="update_mark")
+    clear_model = types.InlineKeyboardButton(f"🔄", callback_data="update_model")
+    clear_number = types.InlineKeyboardButton(f"🔄", callback_data="update_number")
+    clear_driver = types.InlineKeyboardButton(f"🔄", callback_data="update_driver")
 
     # Добавление кнопок в клавиатуру
     keyboard.add(btn1,change_mark,clear_mark)
     keyboard.add(btn2,change_model,clear_model)
     keyboard.add(btn3,change_number,clear_number)
     keyboard.add(btn4,change_driver,clear_driver)
+    keyboard.add(confirm)
+    keyboard.add(cancel_mantle)
+    keyboard.add(button_no)
+
+    return keyboard
+
+def mantle_stage_3_inline_keyboard():
+    keyboard = types.InlineKeyboardMarkup()
+
+    confirm = types.InlineKeyboardButton("Монтаж ✅", callback_data="confirm_mantling3")
+    cancel_mantle = types.InlineKeyboardButton("Назад👈 ", callback_data="back_mantling2")
+    button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="cancel_mantling")
+
+    # Добавление кнопок в клавиатуру
     keyboard.add(confirm)
     keyboard.add(cancel_mantle)
     keyboard.add(button_no)
@@ -218,11 +238,51 @@ def test_function(message):
                                       f"message.id ={message.id}\n"
                                       f"message.chat.id = {message.chat.id}")
 
+def put_in_message_list(ures_id,message_id):
+    """
+    Функція яка записує всі повідомлення з чату в put_in_message_list щоб потім їх повидалять
+    :param ures_id:
+    :param message_id:
+    :return:
+    """
+    if ures_id not in history_msg_mantling:
+        history_msg_mantling[ures_id] = []
+    history_msg_mantling[ures_id].append(message_id)  # Добавляем новый message_id в список
+
+def delete_history_msg(message_chat_id):
+    for msg in history_msg_mantling[message_chat_id]:
+        bot.delete_message(chat_id=message_chat_id, message_id=msg)
+
+    if message_chat_id in history_msg_mantling:
+        del history_msg_mantling[message_chat_id]
+
+
 def user_input_text_mantling(message):
 
-    global mantling_text  # Якщо хочете використовувати глобальну змінну
-    mantling_text = message.text  # Зберігаємо введене значення в змінну
-    bot.send_message(message.chat.id, f"Ваша марка авто: {mantling_text}")
+    global message_mantle  # Якщо хочете використовувати глобальну змінну
+    message_mantle = message.text  # Зберігаємо введене значення в змінну
+    bot.send_message(message.chat.id, f"Ви ввели : {message_mantle}.\n"
+                                      f"Натисніть для оновлення 🔄")
+
+def user_input_text_mantling2(message, additional_param: str):
+    global message_mantle  # Якщо хочете використовувати глобальну змінну
+    message_mantle = message.text  # Зберігаємо введене значення в змінну
+    put_in_message_list(message.chat.id,message.id)
+    msg = bot.send_message(message.chat.id, f"Ви ввели : {message_mantle}.\n"
+                                      f"Натисніть для оновлення 🔄")
+    put_in_message_list(message.chat.id, msg.message_id)
+
+
+    if message.from_user.id not in mantling_state:
+        mantling_state[message.from_user.id] = {
+            "mark":"-",
+            "model":"-",
+            "number":"-",
+            "driver":"-"
+        }  # Если еще нет такого пользователя, создаем пустой словарь
+
+    mantling_state[message.from_user.id][additional_param] = message.text  # Добавляем новый параметр
+    print(mantling_state)
 
 
 def check_mantling_status(claster_text, ownership_text, group_text, subgroup_text):
@@ -245,7 +305,10 @@ def check_mantling_status(claster_text, ownership_text, group_text, subgroup_tex
 
 @bot.callback_query_handler(func=lambda call: call.data in ["change_claster","change_ownership","confirm_mantling",
                                                             "change_group","change_subgroup","cancel_mantling",
-                                                            "back_mantling","change_mark"])
+                                                            "back_mantling","change_mark","change_model",
+                                                            "change_number","change_driver","update_mark","update_model",
+                                                            "update_number","update_driver","confirm_mantling2",
+                                                            "confirm_mantling3","back_mantling2"])
 def callback_mantling(call):
 
     # Текст натиснутих кнопок
@@ -254,12 +317,24 @@ def callback_mantling(call):
     ownership_text = get_button_text_by_callback('change_ownership', keyboard_data)
     group_text = get_button_text_by_callback('change_group', keyboard_data)
     subgroup_text = get_button_text_by_callback('change_subgroup', keyboard_data)
+    mark_text = get_button_text_by_callback('change_mark', keyboard_data)
+    model_text = get_button_text_by_callback('change_model', keyboard_data)
+    number_text = get_button_text_by_callback('change_number', keyboard_data)
+    driver_text = get_button_text_by_callback('change_driver', keyboard_data)
+    global message_mantle
+    #print(f"callback= {call.data}")
     """print(f"Дані кнопок :\n "
                             f"{claster_text}\n"
                             f"{ownership_text}\n"
                             f"{group_text}\n"
                             f"{subgroup_text}"
                             )"""
+    """print(f"Дані кнопок :\n "
+                                f"mark={mark_text}\n"
+                                f"model={model_text}\n"
+                                f"number={number_text}\n"
+                                f"driver={driver_text}"
+                                )"""
     #якщо натиснута кнопка вибору кластеру
     if call.data == "change_claster":
 
@@ -358,7 +433,6 @@ def callback_mantling(call):
             #print(f"Нема чого оновлювати: {e}")
             pass
 
-
     if call.data == "confirm_mantling":
 
         if check_mantling_status(claster_text,ownership_text,group_text,subgroup_text) == False:
@@ -383,12 +457,20 @@ def callback_mantling(call):
         json2['Підгрупа'] = subgroup_text
 
 
+        json2['Марка'] = "-" if json2['Марка'] in ["-","",None] else json2['Марка']
+        json2['Модель'] = "-" if json2['Модель'] in ["-","",None] else json2['Модель']
+        json2['Номер'] = "-" if json2['Номер'] in ["-","",None] else json2['Номер']
+        json2['Водитель'] = "-" if json2['Водитель'] in ["-","",None] else json2['Водитель']
+
         # Используем обратные кавычки для отображения в формате кода
         # formatted_text = "```\n" + json.dumps(text, indent=4, ensure_ascii=False) + "\n```"
         formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4,ensure_ascii=False)}\n```"
 
         #keyboard = mantle_stage_1_inline_keyboard(change_claster=text_cluster)
-        keyboard2 = mantle_stage_2_inline_keyboard()
+        keyboard2 = mantle_stage_2_inline_keyboard(text_mark=json2['Марка'],
+                                                   text_model=json2['Модель'],
+                                                   text_number=json2['Номер'],
+                                                   text_driver=json2['Водитель'])
 
         # Обновляем сообщение с новой клавиатурой
         bot.edit_message_text(
@@ -399,15 +481,38 @@ def callback_mantling(call):
             parse_mode='Markdown'
         )
 
-    if call.data == "back_mantling":
+    if call.data == "back_mantling2":
         json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
         json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
         json1 = json.loads(json1)
         json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
         json2 = json.loads(json2)
+        formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
+        keyboard2 = mantle_stage_2_inline_keyboard(text_mark=json2['Марка'],
+                                                   text_model=json2['Модель'],
+                                                   text_number=json2['Номер'],
+                                                   text_driver=json2['Водитель'])
 
 
-        text_cluster = call.message.json.get('reply_markup').get('inline_keyboard')[0][1].get('text')
+        # Обновляем сообщение с новой клавиатурой
+        bot.edit_message_text(
+            formatted_text,
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=keyboard2,
+            parse_mode='Markdown'
+        )
+
+
+    if call.data == "back_mantling":
+
+        json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+        #json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+        #json1 = json.loads(json1)
+        json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+        json2 = json.loads(json2)
+
+        #text_cluster = call.message.json.get('reply_markup').get('inline_keyboard')[0][1].get('text')
 
         # Используем обратные кавычки для отображения в формате кода
         #formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
@@ -425,14 +530,151 @@ def callback_mantling(call):
         )
 
     if call.data == "change_mark":
-        bot.send_message(call.message.chat.id, "Введіть марку авто:")
-        bot.register_next_step_handler(call.message, user_input_text_mantling)
-        print(message)
+        msg = bot.send_message(call.message.chat.id, "Введіть марку транспорту:")
+        put_in_message_list(call.message.chat.id,msg.message_id)
 
+        bot.register_next_step_handler(call.message,
+                                       lambda message: user_input_text_mantling2(message, "mark"))
+
+    if call.data == "change_model":
+        msg = bot.send_message(call.message.chat.id, "Введіть модель транспорту:")
+        put_in_message_list(call.message.chat.id, msg.message_id)
+
+        bot.register_next_step_handler(call.message,
+                                       lambda message: user_input_text_mantling2(message, "model"))
+
+    if call.data == "change_number":
+        msg = bot.send_message(call.message.chat.id, "Введіть держ. транспорту:")
+        put_in_message_list(call.message.chat.id,msg.message_id)
+
+        bot.register_next_step_handler(call.message,
+                                       lambda message: user_input_text_mantling2(message, "number"))
+
+    if call.data == "change_driver":
+        msg = bot.send_message(call.message.chat.id, "Введіть водія транспорту:")
+        put_in_message_list(call.message.chat.id, msg.message_id)
+
+        bot.register_next_step_handler(call.message,
+                                       lambda message: user_input_text_mantling2(message, "driver"))
+
+    if call.data == "update_mark":
+        if call.message.chat.id in history_msg_mantling : delete_history_msg(call.message.chat.id)
+
+        if call.from_user.id not in mantling_state:
+            return  # якщо такого користувача немає
+
+        try:
+            keyboard = mantle_stage_2_inline_keyboard(text_mark=mantling_state[call.from_user.id]["mark"],
+                                                      text_model=model_text,
+                                                      text_number=number_text,
+                                                      text_driver=driver_text)
+            mantling_state[call.from_user.id]["mark"] = "-"
+
+            bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,
+                                          reply_markup=keyboard)
+        except Exception as e:
+            # print(f"Нема чого оновлювати: {e}")
+            pass
+        message_mantle = "-"
+
+    if call.data == "update_model":
+        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
+        if call.from_user.id not in mantling_state:
+            return  # якщо такого користувача немає
+        try:
+            keyboard = mantle_stage_2_inline_keyboard( text_mark=mark_text,
+                                                       text_model=mantling_state[call.from_user.id]["model"],
+                                                    text_number=number_text,
+                                                       text_driver=driver_text)
+            mantling_state[call.from_user.id]["model"] = "-"
+            bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,
+                                        reply_markup=keyboard)
+        except Exception as e:
+            #print(f"Нема чого оновлювати: {e}")
+            pass
+        message_mantle = "-"
+
+    if call.data == "update_number":
+        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
+        if call.from_user.id not in mantling_state:
+            return  # якщо такого користувача немає
+        try:
+            keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
+                                                      text_model=model_text,
+                                                      text_number=mantling_state[call.from_user.id]["number"],
+                                                      text_driver=driver_text)
+            mantling_state[call.from_user.id]["number"] = "-"
+            bot.edit_message_reply_markup(
+                    chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=keyboard
+            )
+        except Exception as e:
+            # print(f"Нема чого оновлювати: {e}")
+            pass
+        message_mantle = "-"
+
+    if call.data == "update_driver":
+        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
+        if call.from_user.id not in mantling_state:
+            return  # якщо такого користувача немає
+        try:
+            keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
+                                                      text_model=model_text,
+                                                      text_number=number_text,
+                                                      text_driver=mantling_state[call.from_user.id]["driver"])
+            mantling_state[call.from_user.id]["driver"] = "-"
+
+            bot.edit_message_reply_markup(
+                chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=keyboard)
+        except Exception as e:
+            # print(f"Нема чого оновлювати: {e}")
+            pass
+        message_mantle = "-"
 
     if call.data == "cancel_mantling":
         # видаляємо повідомлення
         bot.delete_message(call.message.chat.id, call.message.message_id)
+        message_mantle = "-"
+        if call.from_user.id in mantling_state:
+            del mantling_state[call.from_user.id]
+
+    if call.data == "confirm_mantling2":
+
+        if mark_text == "-" or number_text == "-":
+            bot.send_message(call.message.chat.id, "Поля Марка та держ.номер обов'язкові до заповнення")
+            return
+
+        # в повідомленні 2 json. Витягуємо їх із call.message.text та перетворюємо в json для подальшого обробітку
+        json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+        json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+        json1 = json.loads(json1)
+        json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+        json2 = json.loads(json2)
+
+        json2['Марка'] = mark_text
+        json2['Модель'] = model_text if model_text != "-" else "-"
+        json2['Номер'] = number_text
+        json2['Водитель'] = driver_text if driver_text!= "-" else "-"
+
+        formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
+
+        # keyboard = mantle_stage_1_inline_keyboard(change_claster=text_cluster)
+        """keyboard2 = mantle_stage_2_inline_keyboard(text_mark=json2['Марка'],
+                                                   text_model=json2['Модель'],
+                                                   text_number=json2['Номер'],
+                                                   text_driver=json2['Водитель'])"""
+        keyboard3 = mantle_stage_3_inline_keyboard()
+
+        # Обновляем сообщение с новой клавиатурой
+        bot.edit_message_text(
+            formatted_text,
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=keyboard3,
+            parse_mode='Markdown'
+        )
+
+    if call.data == "confirm_mantling3":
+        print("confirm_mantling3")
 
 
 # Функция для поиска текста кнопки по значению callback_data
