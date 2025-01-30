@@ -202,12 +202,16 @@ def ask_approve_confirmation(specificator:str):
     markup = types.InlineKeyboardMarkup()
     button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_dismantle") #бот
     button_yes2 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_dismantle") #чат
+    button_yes3 = types.InlineKeyboardButton("Підтвердити ✅", callback_data="approve_mantle")  # бот
+
     button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline_dismantle")
 
     if specificator == "confirm_dismantle":
         markup.add(button_yes, button_no)
     if specificator == "approve_dismantle":
         markup.add(button_yes2, button_no)
+    if specificator == "approve_mantle":
+        markup.add(button_yes3, button_no)
     return markup
 
 def ask_confirmation(message, count:int, spec_message: str, specificator="simple"):
@@ -308,7 +312,7 @@ def check_mantling_status(claster_text, ownership_text, group_text, subgroup_tex
                                                             "back_mantling","change_mark","change_model",
                                                             "change_number","change_driver","update_mark","update_model",
                                                             "update_number","update_driver","confirm_mantling2",
-                                                            "confirm_mantling3","back_mantling2"])
+                                                            "confirm_mantling3","back_mantling2","approve_mantle"])
 def callback_mantling(call):
 
     # Текст натиснутих кнопок
@@ -503,7 +507,6 @@ def callback_mantling(call):
             parse_mode='Markdown'
         )
 
-
     if call.data == "back_mantling":
 
         json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
@@ -640,7 +643,8 @@ def callback_mantling(call):
     if call.data == "confirm_mantling2":
 
         if mark_text == "-" or number_text == "-":
-            bot.send_message(call.message.chat.id, "Поля Марка та держ.номер обов'язкові до заповнення")
+            msg = bot.send_message(call.message.chat.id, "Поля Марка та держ.номер обов'язкові до заповнення")
+            put_in_message_list(call.message.chat.id, msg.message_id)
             return
 
         # в повідомленні 2 json. Витягуємо їх із call.message.text та перетворюємо в json для подальшого обробітку
@@ -654,6 +658,7 @@ def callback_mantling(call):
         json2['Модель'] = model_text if model_text != "-" else "-"
         json2['Номер'] = number_text
         json2['Водитель'] = driver_text if driver_text!= "-" else "-"
+        json2['ініціатор'] = call.from_user.username
 
         formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
 
@@ -674,7 +679,107 @@ def callback_mantling(call):
         )
 
     if call.data == "confirm_mantling3":
-        print("confirm_mantling3")
+        #user_id = call.from_user.id
+        #user_state.pop(user_id, None)
+        message_text = call.message.text
+        bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```",
+                         parse_mode="MarkdownV2",
+                         reply_markup=ask_approve_confirmation("approve_mantle"),
+                         message_thread_id=THREAD_ID)
+        # Удаляем сообщение в чате бота после отправки
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Демонтаж відправлено в основний чат",
+                         parse_mode="MarkdownV2")
+
+    if call.data == "approve_mantle":
+        print(f"User : {call.from_user.id} name = {call.from_user.first_name} "
+              f"push '{call.data}' "
+              f"Chat ID '{call.message.chat.id}' "
+              f"message_thread_id = {getattr(call.message, 'message_thread_id', 'No thread ID')}")
+
+        # Коли в чат падає заявка, то тільки адміністратор або власник може натиснути "Погодити"
+        try:
+            chat_member = bot.get_chat_member(call.message.chat.id, call.from_user.id)
+            print(f"Role: {chat_member.status}")
+            if chat_member.status not in ["administrator", "creator"]:
+                return
+        except telebot.apihelper.ApiTelegramException as e:
+            print(f"Ошибка: {e}")
+            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
+            return
+
+        # Зберігаємо  ідентифікатор старого повідомлення
+        old_message_id = call.message.message_id
+
+        #Парсимо json 1 та json 2
+        json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+        json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+        json1 = json.loads(json1)
+        json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+        json2 = json.loads(json2)
+
+        message_time = call.message.date
+
+        # Преобразуем Unix timestamp в читаемый формат
+        readable_time = datetime.fromtimestamp(message_time)
+        # print(f"Value of 'nm': {nm_value}")
+
+        # Отримуємо поточну дату та час
+        current_datetime = datetime.now()
+        # Форматуємо дату та час
+        formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        # Вычисление разницы во времени
+        delay = current_datetime - readable_time
+
+        formatted_message = (
+            f"operation    : `{json2['Операція']}`\n"
+            f"Назва          : `{json2['Марка']} {json2['Модель']} {json2['Номер']} {json2['Водитель']}`\n"
+            f"Протокол   : `{json1['Модель']}`\n"
+            f"EMEI            : `{json1['ИМЕИ']}`\n"
+            f"shortEMEI    : `{json1['ИМЕИ'][-5:]}`\n"
+            f"Cім               : `{json1['Телефон'][-10:]}`\n\n"
+            f"Дата заявки      :  `{readable_time}`\n"
+            f"Підтвердження: `{formatted_datetime}`\n"
+            f"Затримка          : `{delay}`\n"
+            f"Ініціатор            :  `{json2['ініціатор']}`"
+        )
+
+
+        """
+        try:
+            session = WialonManager(WIALON_URL, WIALON_TOKEN)
+            # print(session._get_info())
+
+            # Отримуємо об'єкт по EMEI
+            my_json = session._get_list_universal("avl_unit",
+                                                  "sys_unique_id",
+                                                  f"*{message_dict.get('uid')}*",
+                                                  "sys_unique_id", 1, 1 + 256, 0, 10000)
+            if not my_json['items']:
+                print("не найдено EMEI")
+                return
+            id = my_json.get("items")[0].get("id")
+            id_hv = my_json.get("items")[0].get('hw')
+            # protocol = session._device_type(id_hv)
+
+            # print(f"id = {id}")
+            # print(f"id_hv = {id_hv}")
+            # print(f"protocol = {protocol}")
+
+            # обнуляємо EMEI та телефон. Протокол залишаємо
+            session._update_protocol_imei(id, id_hv, "")
+            session._update_phone(id, "")
+            # видаляємо об'єкт з усіх основних групп крім *історія
+            session._delete_obj_from_groups(id, "", "історія")
+            print(f"Успішно видалений: {my_json.get("items")[0].get("nm")} ")
+            print("Тут необхідно буде добавить в історію")
+
+        except telebot.apihelper.ApiTelegramException as e:
+            print(f"Ошибка: {e}")
+        """
+        bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2", message_thread_id=THREAD_ID)
+        bot.delete_message(call.message.chat.id, old_message_id)
+
 
 
 # Функция для поиска текста кнопки по значению callback_data
