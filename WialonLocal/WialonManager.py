@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone, timedelta
+
 from typing import Dict
 from shapely.geometry import Polygon
 from unicodedata import category
@@ -523,6 +524,7 @@ class WialonManager:
 
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         data = response.json()
+        if not data.get('items'): return None
         return data.get('items')[0].get('id')
 
     def _get_geofences(self,id_creators="*145|47|163|249|368*"):
@@ -659,6 +661,40 @@ class WialonManager:
         json["valid"] = count_valid
         json["not_valid"] = len(list_no_valid)
         json["list_not_valid"] = list_no_valid
+
+        return json
+
+    def _get_info_from_telegram(self,obj_id):
+        """
+        Функція повертає інформацію про об'єкт за obj_id
+        :param obj_id:
+        :return: json
+        """
+
+        json = {
+            "name" : "null",
+            "protocol" : "null",
+            "IMEI" : "null",
+            "phone" : "null",
+            "last msg" : "null",
+            "groups": []
+        }
+        obj = self._get_obj_for_id_and_flags(obj_id, 1 + 256 + 1024)
+        json['name'] = self._get_obj_for_id_and_flags(obj_id, 1 + 256).get("item").get('nm')
+        json['IMEI'] = self._get_obj_for_id_and_flags(obj_id, 1 + 256).get("item").get('uid')
+        json['protocol'] = self._device_type(self._get_obj_for_id_and_flags(obj_id, 1 + 256).get("item").get('hw'))
+        json['phone'] = self._get_obj_for_id_and_flags(obj_id, 1 + 256).get("item").get('ph')
+        for item in self._find_group_for_id_obj(obj_id).get('items'):
+            json['groups'].append(item.get('nm'))
+
+        try:
+            last_msg_utc_time = datetime.fromtimestamp(obj['item']['lmsg']['t'], timezone.utc)
+            # Переврдимо дату по Києву (автоматично)
+            last_msg_utc_time = last_msg_utc_time.astimezone(pytz.timezone('Europe/Kyiv'))
+            json['last msg'] = last_msg_utc_time.strftime("%Y-%m-%d %H:%M:%S") if last_msg_utc_time != None else "None"
+        except Exception as e:
+            print(f"Помилка отримання дати в _get_special_list_json {e}")
+            json['last msg'] = last_msg_utc_time.strftime("%Y-%m-%d %H:%M:%S") if last_msg_utc_time != None else "None"
 
         return json
 
