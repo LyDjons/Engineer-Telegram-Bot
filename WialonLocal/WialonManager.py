@@ -1,7 +1,10 @@
 import json
+from cgitb import reset
 from datetime import datetime, timezone, timedelta
 
 from typing import Dict
+
+from numpy.ma.core import empty
 from shapely.geometry import Polygon
 from unicodedata import category
 from webbrowser import Error
@@ -126,6 +129,38 @@ class WialonManager:
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         data = response.json()
         return data
+
+
+    def _add_obj_to_group(self,obj_id,group_name):
+        """
+        Шукаємо по групі точне співпадіння назви групи. Творці групи повинні мати id ="145|47|163|249|368"
+        Отримуємо список id обєктів, додаємо новий obj_id та робимо апдейт групи
+        :param obj_id:
+        :param group_name:
+        :return: [Not added. Found more than 1 group,
+                    already added,
+                    sucsess,
+                    none]
+
+        """
+        result = self._find_groups(group_name)['items']
+        if len(result) > 1:
+            return "Not added. Found more than 1 group"
+        if not result: return "Not found group"
+
+        for item in result:
+            if group_name == item['nm']:
+                #перевіряєм об'єкт в групі
+                if obj_id in item['u']:
+                    return "already added"
+
+                temp_list = item['u']
+                temp_list.append(obj_id)
+                temp_list.sort()
+                self._update_group(item['id'],temp_list)
+                return "sucsess"
+
+        return "none"
 
     def _delete_obj_from_groups(self,id_obj, name_group, exception_name_group ):
         """
@@ -823,6 +858,7 @@ class WialonManager:
         if mask == "BI868 V10 TREK": return [23,"1111"]
         if mask == "FMA120": return [10,""]
         else: return [23,""]
+
 
 
 
