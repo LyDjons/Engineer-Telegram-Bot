@@ -217,7 +217,7 @@ class WialonManager:
                                               "sys_unique_id",
                                               f"*{emei}*",
                                               "sys_unique_id", 1, 1 +256 , 0, 10000)
-        print(json)
+
         list ={
             "wialon" : []
         }
@@ -232,9 +232,9 @@ class WialonManager:
                 'nm' : item['nm'],
                 'protocol' : self._device_type(item['hw']),
                 'uid' : item['uid'],
-                'ph' : item['ph']
+                'ph' : item['ph'],
+                'id' : item['id']
             })
-
         return list
 
     def _get_list_uid_for_groupName(self,gropName):
@@ -273,6 +273,35 @@ class WialonManager:
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         data = response.json()
         return data
+
+    def _get_name_obj_for_device_phone(self, phone):
+        """
+        Пошук об'єкта за вказаним номером телефону трекера
+        :param phone:
+        :return: 'nm' or "Not found"
+        """
+        query = (
+            'svc=core/search_items&params={"spec":{'
+            '"itemsType": "avl_unit",'
+            '"propName": "sys_phone_number",'
+            f'"propValueMask": "{phone}",'
+            f'"sortType": "avl_unit",'
+            '"propType": "sys_phone_number",'
+            '"or_logic": "0"'
+            '},'
+            '"force": "1",'
+            f'"flags": "1",'
+            '"from": "0",'
+            '"to": "100000"'
+            '}'
+        )
+
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+
+        data = response.json()
+        if not data["items"]: return "Not found"
+        return data["items"][0]["nm"]
 
     def _get_obj_for_id_and_flags(self, obj_id:int, flags:int):
         """
@@ -490,6 +519,23 @@ class WialonManager:
         data = response.json()
         return data
 
+    def _update_protocol_password(self,id_obj,password=""):
+        """
+        Змінити пароль до протоколу
+        :param id_obj:
+        :param password:
+        :return: {'psw': '<long>'}
+        """
+        query = (
+            'svc=unit/update_access_password&params={'
+            f'"itemId":{id_obj},'
+            f'"accessPassword":{password}'
+            '}'
+        )
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
+
     def _update_phone(self,id_obj,phone:str):
 
         query = (
@@ -697,6 +743,88 @@ class WialonManager:
             json['last msg'] = last_msg_utc_time.strftime("%Y-%m-%d %H:%M:%S") if last_msg_utc_time != None else "None"
 
         return json
+
+    def _add_in_history(self,obj_id):
+        """
+        Якщо обєкт знаходиться в групі ЧІМК общая, то цей id обєкту добавляється в групу ЧІМК історія.
+        Відповідна дія і до інших кластерів
+        :param obj_id:
+        :return:
+        """
+        list_update = {
+            'added' : []
+        }
+        # Пробігаємось по всім основним групам в яких знаходиться obj_id
+        for item in self._find_group_for_id_obj(obj_id).get('items'):
+            # Якщо група має назву 'АП Общая'
+            if item['nm'] == 'АП Общая':
+                # отримуємо перелік об'єктів що знаходяться в групі АП історія
+                list_uid =self._get_list_uid_for_groupName("АП історія")
+                # Якщо обєкт з obj_id  нема в списку то добавляємо його в список
+                if obj_id not in list_uid: list_uid.append(obj_id)
+                # Робимо сортування списку на всякий випадок
+                list_uid.sort()
+                # Оновлюємо в групі спикок обєктів. Дуже страшна дія але шо робить.
+                self._update_group(1088, list_uid)
+                list_update['added'].append("АП історія")
+
+            if item['nm'] == 'ЧІМК Общая':
+                list_uid = self._get_list_uid_for_groupName("ЧІМК історія")
+                if obj_id not in list_uid: list_uid.append(obj_id)
+                list_uid.sort()
+                self._update_group(1359, list_uid)
+                list_update['added'].append("ЧІМК історія")
+            if item['nm'] == 'АК Общая':
+                list_uid = self._get_list_uid_for_groupName("АК історія")
+                if obj_id not in list_uid: list_uid.append(obj_id)
+                list_uid.sort()
+                self._update_group(1058, list_uid)
+                list_update['added'].append("АК історія")
+            if item['nm'] == 'СА Общая':
+                list_uid = self._get_list_uid_for_groupName("СА історія")
+                if obj_id not in list_uid: list_uid.append(obj_id)
+                list_uid.sort()
+                self._update_group(1232, list_uid)
+                list_update['added'].append("СА історія")
+            if item['nm'] == 'БА Общая':
+                list_uid = self._get_list_uid_for_groupName("БА історія")
+                if obj_id not in list_uid: list_uid.append(obj_id)
+                list_uid.sort()
+                self._update_group(1150, list_uid)
+                list_update['added'].append("БА історія")
+
+        return list_update
+
+    def _get_id_and_pass_protocol_for_user_mask(self,mask) :
+        """
+        Ця функція чисто користувацька за власними правилами узгодженими адміністратором.
+         Вказуємо назву протоколу із 1С і отримуємо id протокола з Wialon Local та умовно прийнятий стандартиний пароль
+         до цього протоколу
+
+        :param mask: "810 Connect" - так підписано трекер в 1С
+        :return: [23,"1111"] - де id = 23 та pass = 1111
+        """
+        # Wialon IPS = 23
+        # Bitrek = 10
+        # BI 810 TREK = 14
+        # BI 920 TREK = 11
+        # BI 820 TREK OBD = 8
+        # BI 910 TREK = 15
+        # BI 530R TREK = 1956
+
+        if mask == "FMS 500 Tacho SDK": return [3183,""]
+        if mask == "810": return [14,""]
+        if mask == "810 Connect": return [23,"1111"]
+        if mask == "820 OBD": return [8,""]
+        if mask == "910": return [15,""]
+        if mask == "920": return [11,""]
+        if mask == "BI 530C TREK": return [23,"1111"]
+        if mask == "BI 530R TREK": return [1956,"1111"]
+        if mask == "BI868 V10 TREK": return [23,"1111"]
+        if mask == "FMA120": return [10,""]
+        else: return [23,""]
+
+
 
 
 

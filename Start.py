@@ -242,6 +242,7 @@ def test_function(message):
                                       f"message.id ={message.id}\n"
                                       f"message.chat.id = {message.chat.id}")
 
+
 def put_in_message_list(ures_id,message_id):
     """
     Функція яка записує всі повідомлення з чату в put_in_message_list щоб потім їх повидалять
@@ -261,17 +262,11 @@ def delete_history_msg(message_chat_id):
         del history_msg_mantling[message_chat_id]
 
 
-def user_input_text_mantling(message):
-
-    global message_mantle  # Якщо хочете використовувати глобальну змінну
-    message_mantle = message.text  # Зберігаємо введене значення в змінну
-    bot.send_message(message.chat.id, f"Ви ввели : {message_mantle}.\n"
-                                      f"Натисніть для оновлення 🔄")
-
 def user_input_text_mantling2(message, additional_param: str):
     global message_mantle  # Якщо хочете використовувати глобальну змінну
     message_mantle = message.text  # Зберігаємо введене значення в змінну
     put_in_message_list(message.chat.id,message.id)
+
     msg = bot.send_message(message.chat.id, f"Ви ввели : {message_mantle}.\n"
                                       f"Натисніть для оновлення 🔄")
     put_in_message_list(message.chat.id, msg.message_id)
@@ -286,8 +281,6 @@ def user_input_text_mantling2(message, additional_param: str):
         }  # Если еще нет такого пользователя, создаем пустой словарь
 
     mantling_state[message.from_user.id][additional_param] = message.text  # Добавляем новый параметр
-    print(mantling_state)
-
 
 def check_mantling_status(claster_text, ownership_text, group_text, subgroup_text):
     """
@@ -486,11 +479,13 @@ def callback_mantling(call):
         )
 
     if call.data == "back_mantling2":
+
         json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
         json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
         json1 = json.loads(json1)
         json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
         json2 = json.loads(json2)
+
         formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
         keyboard2 = mantle_stage_2_inline_keyboard(text_mark=json2['Марка'],
                                                    text_model=json2['Модель'],
@@ -604,7 +599,7 @@ def callback_mantling(call):
         try:
             keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
                                                       text_model=model_text,
-                                                      text_number=mantling_state[call.from_user.id]["number"],
+                                                      text_number=mantling_state[call.from_user.id]["number"].upper(),
                                                       text_driver=driver_text)
             mantling_state[call.from_user.id]["number"] = "-"
             bot.edit_message_reply_markup(
@@ -647,6 +642,32 @@ def callback_mantling(call):
             put_in_message_list(call.message.chat.id, msg.message_id)
             return
 
+        #перевірка держномера на англ.символи
+        if not all(('а' <= c <= 'я' or 'А' <= c <= 'Я' or c in 'ієїІЇ' or c.isdigit()) for c in number_text):
+            msg = bot.send_message(call.message.chat.id, f"Держ.номер {number_text} введений ENG 🇺🇸 літерами!")
+            put_in_message_list(call.message.chat.id, msg.message_id)
+
+        try:
+            session = WialonManager(WIALON_URL,WIALON_TOKEN)
+            result = session._get_list_universal("avl_unit",
+                                              "sys_name",
+                                              f"*{number_text}*",
+                                              "sys_name", 1, 1 +256, 0, 10000)
+            if result["items"]:
+                #print(result["items"])
+                msg = bot.send_message(call.message.chat.id, f"Об'єкт з держ. {number_text} знайдено у Wialon ✅ ")
+                put_in_message_list(call.message.chat.id, msg.message_id)
+
+            if not result["items"]:
+                msg = bot.send_message(call.message.chat.id, f"Об'єкт з держ. {number_text} не знайдено у Wialon ❌\n"
+                                                             f"Буде створений новий")
+                put_in_message_list(call.message.chat.id, msg.message_id)
+
+
+        except:
+            print("error")
+            pass
+
         # в повідомленні 2 json. Витягуємо їх із call.message.text та перетворюємо в json для подальшого обробітку
         json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
         json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
@@ -679,16 +700,16 @@ def callback_mantling(call):
         )
 
     if call.data == "confirm_mantling3":
-        #user_id = call.from_user.id
-        #user_state.pop(user_id, None)
+
         message_text = call.message.text
+
         bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```",
                          parse_mode="MarkdownV2",
                          reply_markup=ask_approve_confirmation("approve_mantle"),
                          message_thread_id=THREAD_ID)
         # Удаляем сообщение в чате бота после отправки
         bot.delete_message(call.message.chat.id, call.message.message_id)
-        bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Демонтаж відправлено в основний чат",
+        bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Монтаж відправлено в основний чат",
                          parse_mode="MarkdownV2")
 
     if call.data == "approve_mantle":
@@ -708,15 +729,20 @@ def callback_mantling(call):
             bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
             return
 
-        # Зберігаємо  ідентифікатор старого повідомлення
-        old_message_id = call.message.message_id
+        # Якшо пілся наших jsons є якийсь текст, то ми його відкидаємо
+        index_symb = call.message.text.rfind('}')
+        if index_symb != -1:
+            message_text = call.message.text[:index_symb + 1]  # Включаем саму скобку
 
         #Парсимо json 1 та json 2
-        json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+        json_match = re.findall(r'\{(.*?)\}', message_text, re.DOTALL)
         json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
         json1 = json.loads(json1)
         json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
         json2 = json.loads(json2)
+
+        # Извлекаем текст после JSON объектов
+        after_json_text = message_text.split('}'.join(json_match[:2]))[-1].strip()
 
         message_time = call.message.date
 
@@ -746,39 +772,98 @@ def callback_mantling(call):
 
 
         """
-        try:
-            session = WialonManager(WIALON_URL, WIALON_TOKEN)
-            # print(session._get_info())
-
-            # Отримуємо об'єкт по EMEI
-            my_json = session._get_list_universal("avl_unit",
-                                                  "sys_unique_id",
-                                                  f"*{message_dict.get('uid')}*",
-                                                  "sys_unique_id", 1, 1 + 256, 0, 10000)
-            if not my_json['items']:
-                print("не найдено EMEI")
-                return
-            id = my_json.get("items")[0].get("id")
-            id_hv = my_json.get("items")[0].get('hw')
-            # protocol = session._device_type(id_hv)
-
-            # print(f"id = {id}")
-            # print(f"id_hv = {id_hv}")
-            # print(f"protocol = {protocol}")
-
-            # обнуляємо EMEI та телефон. Протокол залишаємо
-            session._update_protocol_imei(id, id_hv, "")
-            session._update_phone(id, "")
-            # видаляємо об'єкт з усіх основних групп крім *історія
-            session._delete_obj_from_groups(id, "", "історія")
-            print(f"Успішно видалений: {my_json.get("items")[0].get("nm")} ")
-            print("Тут необхідно буде добавить в історію")
-
-        except telebot.apihelper.ApiTelegramException as e:
-            print(f"Ошибка: {e}")
+        тут треба добавить алгоритм створення нового об'
         """
-        bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2", message_thread_id=THREAD_ID)
-        bot.delete_message(call.message.chat.id, old_message_id)
+
+        obj_name = f"{json2['Марка']} {json2['Модель']} {json2['Номер']} {json2['Водитель']}"
+        #обэкт маэ обмежену довжину строки в 50 символів, тому зайве обрізаємо
+        if len(obj_name) > 50:
+            obj_name = obj_name[:50]
+        print(f"Назва об'экта = {obj_name}")
+
+        temp_obj = 0
+        error_description = "" #лог помилок при створенні об'єкта
+
+        try:
+            info_wialon = WialonManager(WIALON_URL, WIALON_TOKEN)
+            # #перевіряємо держномер у Wialon
+            temp_obj = info_wialon._get_list_universal("avl_unit",
+                                              "sys_name",
+                                              f"*({json2['Номер']})*",
+                                              "sys_name", 1, 1 + 256 , 0, 10000)
+            if len(temp_obj['items']) > 1:
+                bot.send_message(call.message.chat.id, f"Вибачте, я знайшов декілька об'єктів з таким держ. номером\n"
+                                                       f"Видаліть зайвий і спробуйте знову", message_thread_id=THREAD_ID)
+                return
+            if len(temp_obj['items']) == 0:
+                print("Треба створювать новий об'экт")
+
+            if len(temp_obj['items']) == 1:
+                #Якщо знайдено обєкт по держномеру, і в ньому вже прописаний IMEI такий же або інший, то добавиться повідомлення
+                if temp_obj['items'][0]['uid'] != "":
+
+                    # Оновлюємо повідомлення й додаємо error
+                    error_description = (f"❌Я не можу провести монтаж\n "
+                                         f"Об'єкт= {temp_obj['items'][0]['nm']} \nУже має IMEI= {temp_obj['items'][0]['uid']}")
+                    formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
+                                      f"```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
+                                      f"{error_description}")
+                    try:
+                        bot.edit_message_text(
+                            formatted_text,
+                            chat_id=ENGINEER_CHAT_ID,
+                            message_id=call.message.message_id,
+                            reply_markup=ask_approve_confirmation("approve_mantle"),
+                            parse_mode='Markdown'
+                        )
+                    except Exception as e:
+                        #без змін повідомлення
+                        return
+
+                    return
+                #якщо обєкт без EMEI
+                if temp_obj['items'][0]['uid']=="":
+                    print("Витягуємо обєкт з історії")
+                    # Отримуємо id протокола і загальноприйнятий пароль [23,"1111"]
+                    id_protocol_pass = info_wialon._get_id_and_pass_protocol_for_user_mask(json1["Серия"])
+                    #update IMEI and protocol
+                    info_wialon._update_protocol_imei(temp_obj['items'][0]['id'],id_protocol_pass[0],json1['ИМЕИ'])
+
+                    # добавить сімку
+                    response = info_wialon._update_phone(temp_obj['items'][0]['id'], f"%2B38{json1['Телефон']}")
+                    # 'error' свідчить про те що SIM уже десь використовується у Віалоні
+                    if 'error' in response:
+                        name_with_phone = info_wialon._get_name_obj_for_device_phone(phone = f"*{json1['Телефон']}")
+                        info_wialon._update_phone(temp_obj['items'][0]['id'], "")
+                        error_description += f"Не вдалось прописати SIM карту. Уже є в об'єкті: {name_with_phone}"
+                        print(error_description)
+
+                #добавляємо пароль протоколу
+                info_wialon._update_protocol_password(temp_obj['items'][0]['uid'],id_protocol_pass[1])
+
+
+                formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
+                                  f"```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
+                                  f"{error_description}")
+
+                bot.edit_message_text(
+                    formatted_text,
+                    chat_id=ENGINEER_CHAT_ID,
+                    message_id=call.message.message_id,
+                    reply_markup=ask_approve_confirmation("approve_mantle"),
+                    parse_mode='Markdown'
+                )
+
+
+                #добавить необхіднні групи
+
+        except Exception as e:
+            print(f"Error mantling {e}")
+            return
+
+        #Це на паузы до завершення тестів
+        #bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2", message_thread_id=THREAD_ID)
+        #bot.delete_message(call.message.chat.id, old_message_id)
 
 
 
@@ -861,7 +946,9 @@ def handle_callback(call):
                          message_thread_id=THREAD_ID)
         # Удаляем сообщение в чате бота после отправки
         bot.delete_message(call.message.chat.id, call.message.message_id)
-        bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Демонтаж відправлено в основний чат", parse_mode="MarkdownV2")
+        bot.send_message(call.message.chat.id,
+                         f"```\n{message_text}\n```Демонтаж відправлено в основний чат",
+                         parse_mode="MarkdownV2")
 
     #чат
     elif call.data == "approve_dismantle":
@@ -939,10 +1026,14 @@ def handle_callback(call):
             #обнуляємо EMEI та телефон. Протокол залишаємо
             session._update_protocol_imei(id,id_hv,"")
             session._update_phone(id, "")
+            # дивимся в яких папках *Общая знаходиться обєкт і відправляємо в історію відповідно
+            session._add_in_history(my_json.get("items")[0].get("id"))
             #видаляємо об'єкт з усіх основних групп крім *історія
             session._delete_obj_from_groups(id, "", "історія")
             print(f"Успішно видалений: {my_json.get("items")[0].get("nm")} ")
-            print("Тут необхідно буде добавить в історію")
+            print(my_json.get("items")[0])
+
+
 
         except telebot.apihelper.ApiTelegramException as e:
             print(f"Ошибка: {e}")
@@ -952,7 +1043,6 @@ def handle_callback(call):
 
     elif call.data == "decline_dismantle":
         bot.delete_message(call.message.chat.id, call.message.message_id)
-        print("Прибери видалення")
 
     # Закриваємо "завантаження" кнопки
     #bot.answer_callback_query(call.message.chat.id)
@@ -1147,6 +1237,7 @@ def find_emei_function(message):
         bot.send_message(message.chat.id, "Ви ввели не число а якусь беліберду.")
 
 def mantling_emei_equipment(message):
+
     if message.text.isdigit():
         #bot.send_message(message.chat.id, "Ви ввели число. Починаю пошук")
         text2 = {
@@ -1170,8 +1261,7 @@ def mantling_emei_equipment(message):
 
             for item in result:
                 del item["Склад"]
-            print(json.dumps(result, indent=4, ensure_ascii=False))
-
+            #print(json.dumps(result, indent=4, ensure_ascii=False))
 
 
             if len(result) > 1:
@@ -1183,11 +1273,29 @@ def mantling_emei_equipment(message):
 
             if len(result) == 1:
 
+                #Перевіряємо чи є такий емей у Віалоні
+                try:
+                    info_wialon = WialonManager(WIALON_URL,WIALON_TOKEN)
+                    #Перевіряэмо наявність EMEI у Wialon
+                    id = info_wialon._get_id_from_uid(result[0].get('ИМЕИ'))
+                    if id:
+                        #Якщо є то виводимо в бот інформацію про цей обєкт з EMEI і завершуємо процедуру монтажу
+                        bot.send_message(message.chat.id,
+                                         f"```\n{json.dumps(info_wialon._get_info_from_telegram(id),
+                                                            indent=4, ensure_ascii=False)}\n"
+                                         f"```Я не можу провести зробити монтаж, бо такий IMEI уже є в Wialon",
+                                         parse_mode="MarkdownV2")
+                        return
 
-                formatted_text = f"```\n{json.dumps(result[0], indent=4, ensure_ascii=False)}\n```\n\n```\n{json.dumps(text2, indent=4, ensure_ascii=False)}\n```"
+                except Exception as e:
+                    bot.send_message(message.chat.id,f"Сталася помилка пошуку EMEI у Віалоні: {e}")
+                    return
 
-                """result[0] = {"operation": "монтаж", "creator": message.from_user.username,
-                                       **result[0]}"""
+
+                formatted_text = (f"```\n{json.dumps(result[0], indent=4, ensure_ascii=False)}\n```\n"
+                                  f"\n```\n{json.dumps(text2, indent=4, ensure_ascii=False)}\n```")
+
+                #Виводим заготовку по монтажу в бот з потрібною inline клавіатурою
                 keyboard = mantle_stage_1_inline_keyboard()
                 bot.send_message(
                                     message.chat.id,
@@ -1195,18 +1303,10 @@ def mantling_emei_equipment(message):
                                     parse_mode = "MarkdownV2",
                                     reply_markup=keyboard
                                  )
-                """bot.send_message(message.chat.id,
-                                 f"```\n{json.dumps(result,
-                                                    indent=4, ensure_ascii=False)}\n```",
-                                 parse_mode="MarkdownV2",
-                                 #reply_markup=ask_approve_confirmation("confirm_mantle")
-                                 )"""
-
-                """user_state[message.from_user.id] = {
-                    'wialon_json': result}  # Зберігаємо list_json в словник станів"""
 
             if len(result) == 0:
                 bot.send_message(message.chat.id, "Я нічого не знайшов. Спробуйте ще раз")
+                return
 
 
         except Exception as e:
@@ -1219,7 +1319,7 @@ def mantling_emei_equipment(message):
 def dismantling_emei_equipment(message):
     if message.text.isdigit():
         bot.send_message(message.chat.id, "Ви ввели число. Починаю пошук")
-        myjson = "None"
+
         try:
             session = WialonManager(WIALON_URL,WIALON_TOKEN)
             print(f"{message.from_user.id} create session:\n{session._get_info()}")
@@ -1304,7 +1404,7 @@ def find_function(message):
                                               "sys_name",
                                               f"*{plate_number}*",
                                               "sys_name", 1, 1 + 256 + 1024 + 4096 + 2097152, 0, 10000)
-        print(my_json)
+
         if len(my_json['items']) == 0:
             bot.send_message(message.chat.id, f"Вибачте, я не знайшов такого держ.номера")
             main_menu()
