@@ -54,7 +54,6 @@ def logistic_menu():
     markup.add(btn1, btn2)
     return markup
 
-
 # Меню тарувальних таблиць
 def fueltable_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -62,7 +61,6 @@ def fueltable_menu():
     btn2 = types.KeyboardButton('<-Назад')
     markup.add(btn1, btn2)
     return markup
-
 
 # Меню конвертер тарувальних таблиць
 def fueltable_convert_menu():
@@ -242,7 +240,6 @@ def test_function(message):
                                       f"message.id ={message.id}\n"
                                       f"message.chat.id = {message.chat.id}")
 
-
 def put_in_message_list(ures_id,message_id):
     """
     Функція яка записує всі повідомлення з чату в put_in_message_list щоб потім їх повидалять
@@ -260,7 +257,6 @@ def delete_history_msg(message_chat_id):
 
     if message_chat_id in history_msg_mantling:
         del history_msg_mantling[message_chat_id]
-
 
 def user_input_text_mantling2(message, additional_param: str):
     global message_mantle  # Якщо хочете використовувати глобальну змінну
@@ -299,6 +295,97 @@ def check_mantling_status(claster_text, ownership_text, group_text, subgroup_tex
         if group_text in ["-","легкові","вантажні","трактора"]: return False
     return True
 
+def add_to_wialon_group(obj_id,json_info,session):
+
+    result = {
+        'success': [],
+        'not added': [],
+         'already added': [],
+         'not found group' : [],
+         'none': []
+    }
+
+    temp_group = f"{json_info['Кластер']} Общая"
+
+    #добавляєм в основні групи
+    response = session._add_obj_to_group(obj_id,temp_group)
+    result[response].append(temp_group)
+
+    if json_info['Група'] == 'легкові':
+        temp_group = f"{json_info['Кластер']} Легковий автотранспорт"
+        response = session._add_obj_to_group(obj_id, temp_group)
+        result[response].append(temp_group)
+        if json_info['Підгрупа'] == 'патруль':
+            temp_group = f"{json_info['Кластер']} ЛА Патрульна служба"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+            #Добавляємо в ІМК патрульна служба
+            temp_group = "ІМК патрульна служба"
+            response = session._add_obj_to_group_for_groupID(obj_id, 2275)
+            result[response].append(temp_group)
+        if json_info['Підгрупа'] == 'безпека':
+            temp_group = f"{json_info['Кластер']} ЛА Служба безпеки"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+        if json_info['Підгрупа'] == 'інженерна':
+            temp_group = f"{json_info['Кластер']} ЛА Інженерна служба"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+        if json_info['Підгрупа'] == 'агрономічна':
+            temp_group = f"{json_info['Кластер']} ЛА Агрономічна служба"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+        if json_info['Підгрупа'] == 'інші':
+            temp_group = f"{json_info['Кластер']} ЛА Інші служби"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+        if json_info['Підгрупа'] == 'керівництво':
+            temp_group = f"{json_info['Кластер']} ЛА Керівництво"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+
+    if json_info['Група'] == 'вантажні':
+        if json_info['Підгрупа'] =='1 група':
+            temp_group = f"{json_info['Кластер']} Вантажні автомобілі 1 група"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+        if json_info['Підгрупа'] =='2 група':
+            temp_group = f"{json_info['Кластер']} Вантажні автомобілі 2 група"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+        if json_info['Власність'] =='найманий':
+            temp_group = f"{json_info['Кластер']} Вантажні автомобілі 1 група"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+
+    if json_info['Група'] == 'комбайни':
+
+        temp_group = f"{json_info['Кластер']} Комбайни"
+        response = session._add_obj_to_group(obj_id, temp_group)
+        result[response].append(temp_group)
+
+    if json_info['Група'] == 'автобус':
+        temp_group = f"{json_info['Кластер']} Автобуси"
+        response = session._add_obj_to_group(obj_id, temp_group)
+        result[response].append(temp_group)
+
+    if json_info['Група'] == 'спецтехніка':
+        temp_group = f"{json_info['Кластер']} Спецтехніка"
+        response = session._add_obj_to_group(obj_id, temp_group)
+        result[response].append(temp_group)
+
+    if json_info['Група'] == 'авіація':
+        temp_group = "ІМК Авіація"
+        response = session._add_obj_to_group_for_groupID(obj_id,1404)
+        result[response].append(temp_group)
+
+    if json_info['Власність'] == 'найманий':
+        if json_info['Група'] != 'авіація':
+            temp_group = f"{json_info['Кластер']} історія"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+
+    return result
 
 @bot.callback_query_handler(func=lambda call: call.data in ["change_claster","change_ownership","confirm_mantling",
                                                             "change_group","change_subgroup","cancel_mantling",
@@ -775,11 +862,16 @@ def callback_mantling(call):
         тут треба добавить алгоритм створення нового об'
         """
 
-        obj_name = f"{json2['Марка']} {json2['Модель']} {json2['Номер']} {json2['Водитель']}"
-        #обэкт маэ обмежену довжину строки в 50 символів, тому зайве обрізаємо
-        if len(obj_name) > 50:
-            obj_name = obj_name[:50]
-        print(f"Назва об'экта = {obj_name}")
+        # формуємо нову назву для обєкту
+        obj_new_name = ""
+        if json2['Власність'] == 'найманий': obj_new_name += f"{json2['Кластер']}_"
+        obj_new_name += json2['Марка']
+        if json2['Модель'] != '-': obj_new_name += f" {json2['Модель']}"
+        obj_new_name += f" ({json2['Номер']})"
+        if json2['Водитель'] != '-': obj_new_name += f" {json2['Водитель']}"
+
+        obj_new_name = obj_new_name[:50] if len(obj_new_name) > 50 else obj_new_name
+        print(f"Назва об'єкта = {obj_new_name}")
 
         temp_obj = 0
         error_description = "" #лог помилок при створенні об'єкта
@@ -796,7 +888,8 @@ def callback_mantling(call):
                                                        f"Видаліть зайвий і спробуйте знову", message_thread_id=THREAD_ID)
                 return
             if len(temp_obj['items']) == 0:
-                print("Треба створювать новий об'экт")
+                bot.send_message(call.message.chat.id, f"Треба створювать новий обєкт. Функція не реалізована",
+                                 message_thread_id=THREAD_ID)
 
             if len(temp_obj['items']) == 1:
                 #Якщо знайдено обєкт по держномеру, і в ньому вже прописаний IMEI такий же або інший, то добавиться повідомлення
@@ -823,7 +916,6 @@ def callback_mantling(call):
                     return
                 #якщо обєкт без EMEI
                 if temp_obj['items'][0]['uid']=="":
-                    print("Витягуємо обєкт з історії")
                     # Отримуємо id протокола і загальноприйнятий пароль [23,"1111"]
                     id_protocol_pass = info_wialon._get_id_and_pass_protocol_for_user_mask(json1["Серия"])
                     #update IMEI and protocol
@@ -836,10 +928,26 @@ def callback_mantling(call):
                         name_with_phone = info_wialon._get_name_obj_for_device_phone(phone = f"*{json1['Телефон']}")
                         info_wialon._update_phone(temp_obj['items'][0]['id'], "")
                         error_description += f"Не вдалось прописати SIM карту. Уже є в об'єкті: {name_with_phone}"
-                        print(error_description)
+                        print(f"Error description = {error_description}")
 
                 #добавляємо пароль протоколу
                 info_wialon._update_protocol_password(temp_obj['items'][0]['uid'],id_protocol_pass[1])
+                print(json2)
+                #добавляємо обєкт в групи
+
+                result_group_added = add_to_wialon_group(temp_obj['items'][0]['id'],json2,info_wialon)
+                print(result_group_added)
+
+                #перейменовуємо obj
+                info_wialon._rename_unit(temp_obj['items'][0]['id'],obj_new_name)
+
+                #добавляємо та перейменовуємо датчики
+                result_sensors = info_wialon._create_udate_voltage_sensors(temp_obj['items'][0]['id'])
+
+                #якщо найм то оновлюємо icon
+                if json2['Власність'] == "найманий" and json2['Група'] == "вантажні":
+                    print(info_wialon._change_icon_hired(temp_obj['items'][0]['id']))
+
 
 
                 formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
@@ -855,7 +963,7 @@ def callback_mantling(call):
                 )
 
 
-                #добавить необхіднні групи
+
 
         except Exception as e:
             print(f"Error mantling {e}")
@@ -864,8 +972,6 @@ def callback_mantling(call):
         #Це на паузы до завершення тестів
         #bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2", message_thread_id=THREAD_ID)
         #bot.delete_message(call.message.chat.id, old_message_id)
-
-
 
 # Функция для поиска текста кнопки по значению callback_data
 def get_button_text_by_callback(callback_data, keyboard_data):

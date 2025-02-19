@@ -130,23 +130,18 @@ class WialonManager:
         data = response.json()
         return data
 
-
-    def _add_obj_to_group(self,obj_id,group_name):
+    def _add_obj_to_group(self,obj_id:int,group_name:str):
         """
         Шукаємо по групі точне співпадіння назви групи. Творці групи повинні мати id ="145|47|163|249|368"
         Отримуємо список id обєктів, додаємо новий obj_id та робимо апдейт групи
-        :param obj_id:
-        :param group_name:
-        :return: [Not added. Found more than 1 group,
-                    already added,
-                    sucsess,
-                    none]
-
+        :param obj_id: obj_id
+        :param group_name: назва групи "ЧІМК Общая"
+        :return: [not added,already added,success,not found group,none]
         """
-        result = self._find_groups(group_name)['items']
+        result = self._find_groups(group_mask_name=group_name,exception_name_mask="**")['items']
         if len(result) > 1:
-            return "Not added. Found more than 1 group"
-        if not result: return "Not found group"
+            return "Not added"
+        if not result: return "not found group"
 
         for item in result:
             if group_name == item['nm']:
@@ -158,9 +153,29 @@ class WialonManager:
                 temp_list.append(obj_id)
                 temp_list.sort()
                 self._update_group(item['id'],temp_list)
-                return "sucsess"
+                return "success"
 
         return "none"
+
+    def _add_obj_to_group_for_groupID(self,obj_id, group_id):
+        """
+        Шукаємо по групі точне співпадіння id групи.
+        Отримуємо список id обєктів, додаємо новий obj_id та робимо апдейт групи
+        :param obj_id: id об'єкта
+        :param group_id: id групи
+        :return: [not added,already added,success,not found group,none]
+        """
+        result = self._find_groups(creator_id="*")['items']
+        if not result: return "not found group"
+        for item in result:
+            if item['id'] == group_id:
+                if obj_id in item['u']: return "already added"
+                temp_list = item['u']
+                temp_list.append(obj_id)
+                temp_list.sort()
+                self._update_group(item['id'], temp_list)
+                return "success"
+        return "not added"
 
     def _delete_obj_from_groups(self,id_obj, name_group, exception_name_group ):
         """
@@ -464,6 +479,9 @@ class WialonManager:
         filtered_list = [{"id": item["id"], "name": item["name"]} for item in data if mask_name in item.get("name")]
         return filtered_list
 
+    def _test_func(self,mask_name=""):
+
+        pass
     def _get_users_from_mask(self, mask_name=""):
 
 
@@ -565,6 +583,30 @@ class WialonManager:
             'svc=unit/update_access_password&params={'
             f'"itemId":{id_obj},'
             f'"accessPassword":{password}'
+            '}'
+        )
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
+
+    def _rename_unit(self, obj_id, new_name):
+        """
+        Функція перейменування об'єкту
+
+        svc = item / update_name & params = {"itemId": < long >,
+        "name": < text >}
+
+        :param id_obj:
+        :param new_name: нове ім'я
+        :return:
+        """
+
+        new_name = new_name[:50] if len(new_name) > 50 else new_name
+
+        query = (
+            'svc=item/update_name&params={'
+            f'"itemId":"{obj_id}",'
+            f'"name":"{new_name}"'
             '}'
         )
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
@@ -858,6 +900,139 @@ class WialonManager:
         if mask == "BI868 V10 TREK": return [23,"1111"]
         if mask == "FMA120": return [10,""]
         else: return [23,""]
+
+    def _create_udate_voltage_sensors(self,obj_id, superflag = 0):
+        obj_info = self._get_obj_for_id_and_flags(6331, 1 +256 +  4096)['item']
+        sensors = obj_info['sens']
+        what_to_do = {
+            'Зовнішня напруга' : 'create',
+            'Заряд батареї' : 'create'
+        }
+
+        #Назви параметрів для різних протоколів. Якщо будуть нові трекера або протоколи то зміни вносить тут
+        if obj_info['hw'] in [23]: #Wialon IPS
+            param_ext = "PSV"
+            param_int = "VBAT"
+        elif obj_info['hw'] in [3183]: #FMS 500 TachoSDK = IOTM
+            param_ext = "sensor12288"
+            param_int = "sensor12292"
+        else:
+            param_ext = "pwr_ext"
+            param_int = "pwr_int"
+
+
+        if sensors:
+            #перебираэмо сенсори обєкта і формуємо рішення що робить по датчикам
+            for key, value in sensors.items():
+                #print(f"Sensor {key}: id = {value['id']} t = {value['t']} id = {value['id']} n = {value['n']}, p = {value['p']}")
+                if value['n'] == 'Зовнішня напруга' and value['t'] == 'voltage':
+                    if value['p'] == param_ext:
+                        what_to_do['Зовнішня напруга'] = 'nothing'
+                    else:
+                        what_to_do['Зовнішня напруга'] = key
+
+                if value['n'] == 'Заряд батареї' and value['t'] == 'voltage':
+                    if value['p'] == param_int:
+                        what_to_do['Заряд батареї'] = 'nothing'
+                    else:
+                        what_to_do['Заряд батареї'] = key
+
+        #print(f"update={what_to_do}")
+
+        # Відповідно до рішень що робити починаємо змінювати датчики або створювати
+        if what_to_do['Зовнішня напруга'] == "nothing":
+            #print("Зовнішня напруга - нічого не робимо")
+            pass
+        elif what_to_do['Зовнішня напруга'] == "create":
+            #print("create Зовнішня напруга")
+            query = self.__create_query_power(name_sensor="Зовнішня напруга", name_param=param_ext,
+                                              call_mode="create", item_id=obj_id)
+            response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        else:
+            #print(f"Зовнішня напруга update sensor id = {what_to_do['Зовнішня напруга']}")
+            query = self.__create_query_power(name_sensor="Зовнішня напруга", name_param=param_ext,
+                                              call_mode="update", item_id=obj_id,
+                                              id_sensor=what_to_do['Зовнішня напруга'])
+            response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+
+        if what_to_do['Заряд батареї'] == "nothing":
+            #print("Заряд батареї - нічого не робимо")
+            pass
+        elif what_to_do['Заряд батареї'] == "create":
+            #print("create Заряд батареї")
+            query = self.__create_query_power(name_sensor="Заряд батареї", name_param=param_int,
+                                              call_mode="create", item_id=obj_id)
+            response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        else:
+            #print(f"Заряд батареї update sensor id = {what_to_do['Заряд батареї']}")
+            query = self.__create_query_power(name_sensor="Заряд батареї", name_param=param_int,
+                                              call_mode="update", item_id=obj_id,
+                                              id_sensor=what_to_do['Заряд батареї'])
+            response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+
+        return what_to_do
+
+    def __create_query_power(self, name_sensor = "", name_param = "", call_mode = "create", item_id = "0",id_sensor=0):
+        """
+        Функція повертає запит для оновлення датчиків живлення трекерів з
+        необхідними вхідними параметрами для різних ситуацій при створенні або оновленні
+        :param name_sensor: Назва датчика
+        :param name_param: Параметр датчика
+        :param call_mode: create|update
+        :param item_id: id
+        :param id_sensor: датчика в об'єкті
+        :return: {"sensor":"update"}
+        """
+        if call_mode == "create": id_sensor = 0
+
+        return (
+            'svc=unit/update_sensor&params={'
+                f'"n":"{name_sensor}",'
+                '"t":"voltage",'
+                '"d":"",'
+                '"m":"В",'
+                f'"p":"{name_param}",'
+                '"f":0,'
+                '"c":"{'
+                        '\\"appear_in_popup\\":true,'
+                        '\\"show_time\\":false,'
+                        '\\"pos\\":1,'
+                        '\\"cm\\":1,'
+                        '\\"mu\\":\\"0\\",'
+                        '\\"act\\":1,'
+                        '\\"uct\\":0,'
+                        '\\"timeout\\":0,'
+                        '\\"ci\\":{}'
+                '}",'
+                '"vt":1,'
+                '"vs":0,'
+                '"tbl":[],'
+                f'"id":{id_sensor},'
+                f'"itemId":{item_id},'
+                f'"callMode":"{call_mode}"}}'
+            )
+
+    def _change_icon_hired(self,obj_id):
+        """
+        Змінює іконку об'єкта на найманому транспорті
+
+        :param obj_id: id обэкта
+        :return: {] при успішному оновленні
+        """
+        query = (
+            'svc=unit/update_image&params={'
+            f'"itemId":{obj_id},'
+            '"libId":0,'
+            '"path":"/library/unit/B_40.png"'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
+
+
+
 
 
 
