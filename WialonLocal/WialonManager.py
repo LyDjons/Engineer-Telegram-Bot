@@ -482,6 +482,7 @@ class WialonManager:
     def _test_func(self,mask_name=""):
 
         pass
+
     def _get_users_from_mask(self, mask_name=""):
 
 
@@ -902,7 +903,7 @@ class WialonManager:
         else: return [23,""]
 
     def _create_udate_voltage_sensors(self,obj_id, superflag = 0):
-        obj_info = self._get_obj_for_id_and_flags(6331, 1 +256 +  4096)['item']
+        obj_info = self._get_obj_for_id_and_flags(obj_id, 1 +256 +  4096)['item']
         sensors = obj_info['sens']
         what_to_do = {
             'Зовнішня напруга' : 'create',
@@ -1030,6 +1031,22 @@ class WialonManager:
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
         data = response.json()
         return data
+
+    def _get_creator_if_from_claster_ua(self, claster):
+        """
+        Для кластерів ЧІМК|СА|БА|АК|АП визначення id користувача що буде створювати об'єкт
+        :param claster: ЧІМК|СА|БА|АК|АП
+        :return: id creator
+        """
+        creator_id = "no id"
+        if claster == "ЧІМК": creator_id = "145"
+        if claster == "СА": creator_id = "368"
+        if claster == "БА": creator_id = "145"
+        if claster == "АК": creator_id = "163"
+        if claster == "АП": creator_id = "249"
+        return creator_id
+
+
 
 
 

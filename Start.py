@@ -858,11 +858,7 @@ def callback_mantling(call):
         )
 
 
-        """
-        тут треба добавить алгоритм створення нового об'
-        """
-
-        # формуємо нову назву для обєкту
+        # формуємо нову назву для об'єкту
         obj_new_name = ""
         if json2['Власність'] == 'найманий': obj_new_name += f"{json2['Кластер']}_"
         obj_new_name += json2['Марка']
@@ -876,6 +872,7 @@ def callback_mantling(call):
         temp_obj = 0
         error_description = "" #лог помилок при створенні об'єкта
 
+
         try:
             info_wialon = WialonManager(WIALON_URL, WIALON_TOKEN)
             # #перевіряємо держномер у Wialon
@@ -883,86 +880,123 @@ def callback_mantling(call):
                                               "sys_name",
                                               f"*({json2['Номер']})*",
                                               "sys_name", 1, 1 + 256 , 0, 10000)
+            print(f"find obj = \n{temp_obj}")
             if len(temp_obj['items']) > 1:
                 bot.send_message(call.message.chat.id, f"Вибачте, я знайшов декілька об'єктів з таким держ. номером\n"
                                                        f"Видаліть зайвий і спробуйте знову", message_thread_id=THREAD_ID)
                 return
-            if len(temp_obj['items']) == 0:
-                bot.send_message(call.message.chat.id, f"Треба створювать новий обєкт. Функція не реалізована",
-                                 message_thread_id=THREAD_ID)
+            #якщо держномер не знайдено
 
-            if len(temp_obj['items']) == 1:
-                #Якщо знайдено обєкт по держномеру, і в ньому вже прописаний IMEI такий же або інший, то добавиться повідомлення
-                if temp_obj['items'][0]['uid'] != "":
+            #Якщо знайдено один об'єкт або не знайдено жодного
+            if len(temp_obj['items']) == 0 or len(temp_obj['items']) == 1:
 
-                    # Оновлюємо повідомлення й додаємо error
-                    error_description = (f"❌Я не можу провести монтаж\n "
-                                         f"Об'єкт= {temp_obj['items'][0]['nm']} \nУже має IMEI= {temp_obj['items'][0]['uid']}")
+                # Якщо не знайдено то створюємо
+                if len(temp_obj['items']) == 0:
+                    # Визначення протоколу та id_creator
+                    print("Створюємо об'єкт")
+                    creator_id = info_wialon._get_creator_if_from_claster_ua(json1["Организация"])
+                    protocol_id = info_wialon._get_id_and_pass_protocol_for_user_mask(json1["Серия"])[0]
+                    print(f"Name obj = {obj_new_name} Creator_id = {creator_id} protocol_id = {protocol_id}")
+
+                    create_result = info_wialon._create_obj(creator_id, obj_new_name, protocol_id)
+                    print(f"create obj = \n{create_result}")
+                    if "error" in create_result:
+                        error_description += error_description + f"Відсутні вільні обєкти в Wialon Local❌"
+                        print(error_description)
+                        formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
+                                          f"```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
+                                          f"{error_description}")
+                        # Оновлюємо повідомлення в чаті і добавляємо текст помилки
+                        try:
+                            bot.edit_message_text(
+                                formatted_text,
+                                chat_id=ENGINEER_CHAT_ID,
+                                message_id=call.message.message_id,
+                                reply_markup=ask_approve_confirmation("approve_mantle"),
+                                parse_mode='Markdown'
+                            )
+                        except Exception as e:
+                            return
+
+                if len(temp_obj['items']) == 1:
+                    # Якщо знайдено обєкт по держномеру, і в ньому вже прописаний IMEI такий же або інший,
+                    # то добавиться повідомлення
+                    if temp_obj['items'][0]['uid'] != "":
+                        # Оновлюємо повідомлення й додаємо error
+                        error_description = (f"❌Я не можу провести монтаж\n "
+                                             f"Об'єкт= {temp_obj['items'][0]['nm']} \nУже має IMEI= {temp_obj['items'][0]['uid']}")
+
+                        # Экранируем специальные символы Markdown
+                        # error_description = re.sub(r'([`\*_{}[\]()#+\-.!])', r'\\\1', error_description)
+                        error_description = re.sub(r'([`\*_{}[\]#+\-.!])', r'\\\1', error_description)
+
+                        formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
+                                          f"```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
+                                          f"{error_description}")
+                        # Оновлюємо повідомлення в чаті і добавляємо текст помилки
+                        try:
+                            bot.edit_message_text(
+                                formatted_text,
+                                chat_id=ENGINEER_CHAT_ID,
+                                message_id=call.message.message_id,
+                                reply_markup=ask_approve_confirmation("approve_mantle"),
+                                parse_mode='Markdown'
+                            )
+                        except Exception as e:
+                            return
+
+                        return
+
+                    # якщо обєкт без EMEI
+                    if temp_obj['items'][0]['uid'] == "":
+                        # Отримуємо id протокола і загальноприйнятий пароль [23,"1111"]
+                        id_protocol_pass = info_wialon._get_id_and_pass_protocol_for_user_mask(json1["Серия"])
+                        # update IMEI and protocol
+                        info_wialon._update_protocol_imei(temp_obj['items'][0]['id'], id_protocol_pass[0],
+                                                          json1['ИМЕИ'])
+
+                        # добавить сімку
+                        response = info_wialon._update_phone(temp_obj['items'][0]['id'], f"%2B38{json1['Телефон']}")
+
+                        # 'error' свідчить про те що SIM уже десь використовується у Віалоні
+                        if 'error' in response:
+                            name_with_phone = info_wialon._get_name_obj_for_device_phone(phone=f"*{json1['Телефон']}")
+                            info_wialon._update_phone(temp_obj['items'][0]['id'], "")
+                            error_description += f"Не вдалось прописати SIM карту. Уже є в об'єкті: {name_with_phone}"
+
+                    # добавляємо пароль протоколу
+                    info_wialon._update_protocol_password(temp_obj['items'][0]['uid'], id_protocol_pass[1])
+
+                    # добавляємо обєкт в групи
+                    result_group_added = add_to_wialon_group(temp_obj['items'][0]['id'], json2, info_wialon)
+
+                    # перейменовуємо obj
+                    info_wialon._rename_unit(temp_obj['items'][0]['id'], obj_new_name)
+
+                    # добавляємо та перейменовуємо датчики
+
+                    result_sensors = info_wialon._create_udate_voltage_sensors(temp_obj['items'][0]['id'])
+
+                    # якщо найм то оновлюємо icon
+                    if json2['Власність'] == "найманий" and json2['Група'] == "вантажні":
+                        info_wialon._change_icon_hired(temp_obj['items'][0]['id'])
+
                     formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
                                       f"```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
                                       f"{error_description}")
-                    try:
-                        bot.edit_message_text(
-                            formatted_text,
-                            chat_id=ENGINEER_CHAT_ID,
-                            message_id=call.message.message_id,
-                            reply_markup=ask_approve_confirmation("approve_mantle"),
-                            parse_mode='Markdown'
-                        )
-                    except Exception as e:
-                        #без змін повідомлення
-                        return
 
-                    return
-                #якщо обєкт без EMEI
-                if temp_obj['items'][0]['uid']=="":
-                    # Отримуємо id протокола і загальноприйнятий пароль [23,"1111"]
-                    id_protocol_pass = info_wialon._get_id_and_pass_protocol_for_user_mask(json1["Серия"])
-                    #update IMEI and protocol
-                    info_wialon._update_protocol_imei(temp_obj['items'][0]['id'],id_protocol_pass[0],json1['ИМЕИ'])
-
-                    # добавить сімку
-                    response = info_wialon._update_phone(temp_obj['items'][0]['id'], f"%2B38{json1['Телефон']}")
-                    # 'error' свідчить про те що SIM уже десь використовується у Віалоні
-                    if 'error' in response:
-                        name_with_phone = info_wialon._get_name_obj_for_device_phone(phone = f"*{json1['Телефон']}")
-                        info_wialon._update_phone(temp_obj['items'][0]['id'], "")
-                        error_description += f"Не вдалось прописати SIM карту. Уже є в об'єкті: {name_with_phone}"
-                        print(f"Error description = {error_description}")
-
-                #добавляємо пароль протоколу
-                info_wialon._update_protocol_password(temp_obj['items'][0]['uid'],id_protocol_pass[1])
-                print(json2)
-                #добавляємо обєкт в групи
-
-                result_group_added = add_to_wialon_group(temp_obj['items'][0]['id'],json2,info_wialon)
-                print(result_group_added)
-
-                #перейменовуємо obj
-                info_wialon._rename_unit(temp_obj['items'][0]['id'],obj_new_name)
-
-                #добавляємо та перейменовуємо датчики
-                result_sensors = info_wialon._create_udate_voltage_sensors(temp_obj['items'][0]['id'])
-
-                #якщо найм то оновлюємо icon
-                if json2['Власність'] == "найманий" and json2['Група'] == "вантажні":
-                    print(info_wialon._change_icon_hired(temp_obj['items'][0]['id']))
+                    bot.edit_message_text(
+                        formatted_text,
+                        chat_id=ENGINEER_CHAT_ID,
+                        message_id=call.message.message_id,
+                        reply_markup=ask_approve_confirmation("approve_mantle"),
+                        parse_mode='Markdown'
+                    )
 
 
 
-                formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
-                                  f"```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
-                                  f"{error_description}")
 
-                bot.edit_message_text(
-                    formatted_text,
-                    chat_id=ENGINEER_CHAT_ID,
-                    message_id=call.message.message_id,
-                    reply_markup=ask_approve_confirmation("approve_mantle"),
-                    parse_mode='Markdown'
-                )
-
-
+            #якщо знайшов співпадіння по держ номеру
 
 
         except Exception as e:
