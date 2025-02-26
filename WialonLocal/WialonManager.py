@@ -895,6 +895,7 @@ class WialonManager:
         if mask == "810 Connect": return [23,"1111"]
         if mask == "820 OBD": return [8,""]
         if mask == "910": return [15,""]
+        if mask == "868": return [12, ""]
         if mask == "920": return [11,""]
         if mask == "BI 530C TREK": return [23,"1111"]
         if mask == "BI 530R TREK": return [1956,"1111"]
