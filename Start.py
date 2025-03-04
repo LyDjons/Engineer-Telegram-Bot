@@ -22,7 +22,6 @@ mantling_state = {}
 user_state = {}
 history_msg_mantling = {}
 
-#me 353397138
 
 user_id_list = [5015926969,
                 947585131,
@@ -31,11 +30,12 @@ user_id_list = [5015926969,
                 7436821858,
                 5019308388,
                 811377535,
-                405850921,
-                353397138]
+                405850921, #LyDjons
+                353397138
+                ]
 
 # Состояния кнопок (начальные значения)
-button_state = {"claster": ["-","ЧІМК","АП","АК","CА","БА"],
+button_state = {"claster": ["-","ЧІМК","АП","АК","СА","БА"],
                 "ownership": ["-","найманий","власний"],
                 "власний": ["-","легкові","вантажні","трактора","комбайни","автобус","спецтехніка"],
                 "найманий": ["-","вантажні","комбайни","авіація","трактора"],
@@ -47,15 +47,29 @@ button_state = {"claster": ["-","ЧІМК","АП","АК","CА","БА"],
 # Декоратор для перевірки юзера
 def check_permissions(func):
     @wraps(func)
-    def wrapper(message, *args, **kwargs):
-        print(f"User id: {message.from_user.id} username {message.from_user.username} push-> {message.text}")
+    def wrapper(message_or_callback, *args, **kwargs):
+        #print(f"arg = {isinstance(message_or_callback, telebot.types.Message)}")
+        try:
+            # Перевірка типу: якщо це callback_query
+            if isinstance(message_or_callback, telebot.types.Message):  # це message
+                message = message_or_callback
+                print(f"User id: {message.from_user.id} username {message.from_user.username} push-> {message.text}")
+            elif isinstance(message_or_callback, telebot.types.CallbackQuery):  # це callback_query
+                callback_query = message_or_callback
+                user = callback_query.from_user
+                print(f"User id: {user.id} username {user.username} push-> {callback_query.data}")
+            else:
+                print("Unknown type of message_or_callback")
 
-        if message.from_user.id not in user_id_list:
-            bot.send_message(message.chat.id,
-                             "Хто ти, воїн?\nКинь 100 гривень на карту або йди геть\n"
-                             "`4441 1111 507 7246`", parse_mode="MarkdownV2")
+        except Exception as e:
+            print(f"Error accessing mssage or callback_query: {e}")
+
+        if message_or_callback.from_user.id not in user_id_list:
+            bot.send_message(message_or_callback.chat.id,
+                             "Хто ти, воїн?\nКинь 100 гривень на карту або йди геть\n\n"
+                             "`444111115077246`", parse_mode="MarkdownV2")
             return
-        return func(message, *args, **kwargs)
+        return func(message_or_callback, *args, **kwargs)
     return wrapper
 
 
@@ -550,7 +564,8 @@ def callback_mantling(call):
     if call.data == "confirm_mantling":
 
         if check_mantling_status(claster_text,ownership_text,group_text,subgroup_text) == False:
-            bot.send_message(call.message.chat.id,"Виберіть правильно кластер, власність, групи та підгрупи")
+            msg = bot.send_message(call.message.chat.id,"Виберіть правильно кластер, власність, групи та підгрупи")
+            put_in_message_list(call.message.chat.id, msg.message_id)
             return
         #в повідомленні 2 json. Витягуємо їх із call.message.text та перетворюємо в json для подальшого обробітку
         json_match = re.findall(r'\{(.*?)\}',call.message.text,re.DOTALL)
@@ -777,7 +792,7 @@ def callback_mantling(call):
 
             if not result["items"]:
                 msg = bot.send_message(call.message.chat.id, f"Об'єкт з держ. {number_text} не знайдено у Wialon ❌\n"
-                                                             f"Буде створений новий")
+                                                             f"Буде створений новий ✅")
                 put_in_message_list(call.message.chat.id, msg.message_id)
 
 
@@ -819,11 +834,15 @@ def callback_mantling(call):
     if call.data == "confirm_mantling3":
 
         message_text = call.message.text
+        try:
+            bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```",
+                             parse_mode="MarkdownV2",
+                             reply_markup=ask_approve_confirmation("approve_mantle"),
+                             message_thread_id=THREAD_ID)
+        except Exception as e:
+            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ID}")
+            return
 
-        bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```",
-                         parse_mode="MarkdownV2",
-                         reply_markup=ask_approve_confirmation("approve_mantle"),
-                         message_thread_id=THREAD_ID)
         # Удаляем сообщение в чате бота после отправки
         bot.delete_message(call.message.chat.id, call.message.message_id)
         bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Монтаж відправлено в основний чат",
@@ -918,12 +937,14 @@ def callback_mantling(call):
                 if len(temp_obj['items']) == 0:
                     # Визначення протоколу та id_creator
 
+                    print(json2["Кластер"]=="CА")
                     creator_id = info_wialon._get_creator_if_from_claster_ua(json2["Кластер"])
                     protocol_id = info_wialon._get_id_and_pass_protocol_for_user_mask(json1["Серия"])[0]
                     protocol_name = info_wialon._device_type(protocol_id)
 
 
                     create_result = info_wialon._create_obj(creator_id, obj_new_name, protocol_id)
+                    print(f"creator id={creator_id} protocol id = {protocol_id} protocol name = {protocol_name}")
 
 
                     success__description_logs['success'].append(f"Створено об'єкт = {obj_new_name}"
@@ -936,7 +957,10 @@ def callback_mantling(call):
                                                                "sys_name", 1, 1 + 256, 0, 10000)
 
                     if "error" in create_result:
-                        error_description += error_description + f"Відсутні вільні обєкти в Wialon Local❌"
+                        if create_result['error']==6:
+                            error_description += error_description + f"Відсутні вільні обєкти в Wialon Local❌"
+                        if create_result['error']==4:
+                            error_description += error_description + f"Не зміг створить обєкт в Wialon Local❌"
                         success__description_logs['errors'].append(error_description)
 
                         formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
@@ -953,6 +977,7 @@ def callback_mantling(call):
                             )
                             return
                         except Exception as e:
+                            #тут бажано ще перевірить на можливість відправки в інженерний чат та потрібну гілку
                             print("Не вдалось оновити Message Telegram. Відсутні вільні обєкти в Wialon Local")
                             return
                             pass
@@ -1113,6 +1138,7 @@ def handle_callback(call):
     user_id = call.from_user.id
 
     if call.data == "yes_find" and user_state[user_id].get("wialon_json"):
+        print(user_state)
         for index, item in enumerate(user_state[user_id].get("wialon_json")):
             if index == 10: break
             bot.send_message(call.message.chat.id, f"```\n{json.dumps(item, indent=4, ensure_ascii=False)}\n```",
@@ -1158,10 +1184,16 @@ def handle_callback(call):
 
         user_state.pop(user_id, None)
         message_text = call.message.text
-        bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```" ,
-                         parse_mode="MarkdownV2",
-                         reply_markup=ask_approve_confirmation("approve_dismantle"),
-                         message_thread_id=THREAD_ID)
+
+        try:
+            bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```" ,
+                             parse_mode="MarkdownV2",
+                             reply_markup=ask_approve_confirmation("approve_dismantle"),
+                             message_thread_id=THREAD_ID)
+        except Exception as e:
+            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ID}")
+            return
+
         # Удаляем сообщение в чате бота после отправки
         bot.delete_message(call.message.chat.id, call.message.message_id)
         bot.send_message(call.message.chat.id,
@@ -1500,8 +1532,10 @@ def mantling_emei_equipment(message):
                     info_wialon = WialonManager(WIALON_URL,WIALON_TOKEN)
                     #Перевіряэмо наявність EMEI у Wialon
                     id = info_wialon._get_id_from_uid(result[0].get('ИМЕИ'))
+                    print(id)
                     if id:
                         #Якщо є то виводимо в бот інформацію про цей обєкт з EMEI і завершуємо процедуру монтажу
+                        print(info_wialon._get_info_from_telegram(id))
                         bot.send_message(message.chat.id,
                                          f"```\n{json.dumps(info_wialon._get_info_from_telegram(id),
                                                             indent=4, ensure_ascii=False)}\n"
@@ -1619,7 +1653,7 @@ def find_function(message):
 
 
         session = WialonManager(WIALON_URL, WIALON_TOKEN)
-        print(session._get_info())
+        #print(session._get_info())
 
 
         my_json = session._get_list_universal("avl_unit",

@@ -483,7 +483,7 @@ class WialonManager:
 
         pass
 
-    def _get_users_from_mask(self, mask_name=""):
+    def _get_users_from_mask(self, mask_name="",flag="1"):
 
 
         query = (
@@ -494,7 +494,7 @@ class WialonManager:
             f'"sortType":"sys_name"'
             '},'
             f'"force":"1",'
-            f'"flags":"1",'
+            f'"flags":"{flag}",'
             f'"from":"0",'
             f'"to":"100000"'
             '}'
@@ -803,6 +803,7 @@ class WialonManager:
             "last msg" : "null",
             "groups": []
         }
+        last_msg_utc_time = None
         obj = self._get_obj_for_id_and_flags(obj_id, 1 + 256 + 1024)
         json['name'] = self._get_obj_for_id_and_flags(obj_id, 1 + 256).get("item").get('nm')
         json['IMEI'] = self._get_obj_for_id_and_flags(obj_id, 1 + 256).get("item").get('uid')
@@ -1042,10 +1043,11 @@ class WialonManager:
         creator_id = "no id"
         if claster == "ЧІМК": creator_id = "145"
         if claster == "СА": creator_id = "368"
-        if claster == "БА": creator_id = "145"
+        if claster == "БА": creator_id = "47"
         if claster == "АК": creator_id = "163"
         if claster == "АП": creator_id = "249"
         return creator_id
+
 
 
 
