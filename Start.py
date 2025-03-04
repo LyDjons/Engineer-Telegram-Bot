@@ -49,6 +49,10 @@ def check_permissions(func):
     @wraps(func)
     def wrapper(message_or_callback, *args, **kwargs):
         #print(f"arg = {isinstance(message_or_callback, telebot.types.Message)}")
+        print(datetime.now())
+        print(f"mantling state= {mantling_state}")
+        print(f"user state = {user_state}")
+
         try:
             # Перевірка типу: якщо це callback_query
             if isinstance(message_or_callback, telebot.types.Message):  # це message
@@ -69,6 +73,7 @@ def check_permissions(func):
                              "Хто ти, воїн?\nКинь 100 гривень на карту або йди геть\n\n"
                              "`444111115077246`", parse_mode="MarkdownV2")
             return
+
         return func(message_or_callback, *args, **kwargs)
     return wrapper
 
@@ -296,7 +301,10 @@ def put_in_message_list(ures_id,message_id):
 
 def delete_history_msg(message_chat_id):
     for msg in history_msg_mantling[message_chat_id]:
-        bot.delete_message(chat_id=message_chat_id, message_id=msg)
+        try:
+            bot.delete_message(chat_id=message_chat_id, message_id=msg)
+        except telebot.apihelper.ApiTelegramException as e:
+            print(f"Ошибка при удалении сообщения {msg}: {e}")
 
     if message_chat_id in history_msg_mantling:
         del history_msg_mantling[message_chat_id]
@@ -1025,7 +1033,10 @@ def callback_mantling(call):
                     success__description_logs["success"].append(f"Update_protocol = {id_protocol_pass[0]}")
 
                     # добавить сімку
-                    response = info_wialon._update_phone(temp_obj['items'][0]['id'], f"%2B38{json1['Телефон']}")
+
+
+
+                    response = info_wialon._update_phone(temp_obj['items'][0]['id'],f"%2B38{json1['Телефон']}")
                     sim = json1['Телефон']
 
                     # 'error' свідчить про те що SIM уже десь використовується у Віалоні
@@ -1512,11 +1523,13 @@ def mantling_emei_equipment(message):
 
             result = file_excel.find_emei(message.text, json_list)
 
+            #якщо в гугл ексель номер починається без нуля, то дописуємо нуль
+            if not str(result[0]['Телефон']).startswith('0'):
+                result[0]['Телефон'] = '0' + str(result[0]['Телефон'])
 
             for item in result:
                 del item["Склад"]
             #print(json.dumps(result, indent=4, ensure_ascii=False))
-
 
             if len(result) > 1:
                 ask_confirmation(message, len(result),
@@ -1563,7 +1576,6 @@ def mantling_emei_equipment(message):
             if len(result) == 0:
                 bot.send_message(message.chat.id, "Я нічого не знайшов. Спробуйте ще раз")
                 return
-
 
         except Exception as e:
             print(f"Сталася помилка: {e}")
