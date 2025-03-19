@@ -27,11 +27,13 @@ user_id_list = [5015926969,
                 947585131,
                 775847107,
                 7746732602,
-                7436821858,
+                7436821858, #отрошко
                 5019308388,
                 811377535,
                 405850921, #LyDjons
-                353397138
+                353397138,
+                1799853664 #guz
+
                 ]
 
 # Состояния кнопок (начальные значения)
@@ -195,7 +197,7 @@ def mantle_stage_1_inline_keyboard(change_claster ='-', change_ownership='-', ch
 
     return keyboard
 
-def mantle_stage_2_inline_keyboard(text_mark='-',text_model='-',text_number='-',text_driver='-'):
+def mantle_stage_2_inline_keyboard(text_mark='-',text_model='-',text_number='-',text_driver='-',text_fuel_card='-'):
     keyboard = types.InlineKeyboardMarkup()
 
     # Создание кнопок
@@ -203,6 +205,8 @@ def mantle_stage_2_inline_keyboard(text_mark='-',text_model='-',text_number='-',
     btn2 = types.InlineKeyboardButton("Модель", callback_data="None")
     btn3 = types.InlineKeyboardButton("Номер", callback_data="None")
     btn4 = types.InlineKeyboardButton("Водій", callback_data="None")
+    btn5 = types.InlineKeyboardButton("Паливна карта", callback_data="None")
+
     confirm = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_mantling2")
     cancel_mantle = types.InlineKeyboardButton("Назад👈 ", callback_data="back_mantling")
     button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="cancel_mantling")
@@ -211,16 +215,22 @@ def mantle_stage_2_inline_keyboard(text_mark='-',text_model='-',text_number='-',
     change_model = types.InlineKeyboardButton(f"{text_model}", callback_data="change_model")
     change_number = types.InlineKeyboardButton(f"{text_number}", callback_data="change_number")
     change_driver = types.InlineKeyboardButton(f"{text_driver}", callback_data="change_driver")
+    change_fuel_card = types.InlineKeyboardButton(f"{text_fuel_card}", callback_data="change_fuel_cart")
+
     clear_mark = types.InlineKeyboardButton(f"🔄", callback_data="update_mark")
     clear_model = types.InlineKeyboardButton(f"🔄", callback_data="update_model")
     clear_number = types.InlineKeyboardButton(f"🔄", callback_data="update_number")
     clear_driver = types.InlineKeyboardButton(f"🔄", callback_data="update_driver")
+    clear_fuel_card = types.InlineKeyboardButton(f"🔄", callback_data="update_fuel_card")
+
+
 
     # Добавление кнопок в клавиатуру
     keyboard.add(btn1,change_mark,clear_mark)
     keyboard.add(btn2,change_model,clear_model)
     keyboard.add(btn3,change_number,clear_number)
     keyboard.add(btn4,change_driver,clear_driver)
+    keyboard.add(btn5, change_fuel_card, clear_fuel_card)
     keyboard.add(confirm)
     keyboard.add(cancel_mantle)
     keyboard.add(button_no)
@@ -324,7 +334,8 @@ def user_input_text_mantling2(message, additional_param: str):
             "mark":"-",
             "model":"-",
             "number":"-",
-            "driver":"-"
+            "driver":"-",
+            "change_fuel_cart":"-"
         }  # Если еще нет такого пользователя, создаем пустой словарь
 
     mantling_state[message.from_user.id][additional_param] = message.text  # Добавляем новый параметр
@@ -415,6 +426,17 @@ def add_to_wialon_group(obj_id,json_info,session):
         response = session._add_obj_to_group(obj_id, temp_group)
         result[response].append(temp_group)
 
+    if json_info['Група'] == 'трактора':
+        if json_info['Підгрупа'] =='важкі':
+            temp_group = f"{json_info['Кластер']} Трактор важкий"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+
+        if json_info['Підгрупа'] =='легкі':
+            temp_group = f"{json_info['Кластер']} Трактор легкий"
+            response = session._add_obj_to_group(obj_id, temp_group)
+            result[response].append(temp_group)
+
     if json_info['Група'] == 'автобус':
         temp_group = f"{json_info['Кластер']} Автобуси"
         response = session._add_obj_to_group(obj_id, temp_group)
@@ -443,6 +465,7 @@ def add_to_wialon_group(obj_id,json_info,session):
                                                             "back_mantling","change_mark","change_model",
                                                             "change_number","change_driver","update_mark","update_model",
                                                             "update_number","update_driver","confirm_mantling2",
+                                                            "change_fuel_cart","update_fuel_card",
                                                             "confirm_mantling3","back_mantling2","approve_mantle"])
 @check_permissions
 def callback_mantling(call):
@@ -457,6 +480,8 @@ def callback_mantling(call):
     model_text = get_button_text_by_callback('change_model', keyboard_data)
     number_text = get_button_text_by_callback('change_number', keyboard_data)
     driver_text = get_button_text_by_callback('change_driver', keyboard_data)
+    fuel_card_text = get_button_text_by_callback('change_fuel_cart', keyboard_data)
+
     global message_mantle
     #print(f"callback= {call.data}")
     """print(f"Дані кнопок :\n "
@@ -469,7 +494,8 @@ def callback_mantling(call):
                                 f"mark={mark_text}\n"
                                 f"model={model_text}\n"
                                 f"number={number_text}\n"
-                                f"driver={driver_text}"
+                                f"driver={driver_text}\n
+                                f"driver={fuel_card_text}"
                                 )"""
     #якщо натиснута кнопка вибору кластеру
     if call.data == "change_claster":
@@ -598,6 +624,7 @@ def callback_mantling(call):
         json2['Модель'] = "-" if json2['Модель'] in ["-","",None] else json2['Модель']
         json2['Номер'] = "-" if json2['Номер'] in ["-","",None] else json2['Номер']
         json2['Водитель'] = "-" if json2['Водитель'] in ["-","",None] else json2['Водитель']
+        json2['Паливна карта'] = "-" if json2['Паливна карта'] in ["-", "", None] else json2['Паливна карта']
 
         # Используем обратные кавычки для отображения в формате кода
         # formatted_text = "```\n" + json.dumps(text, indent=4, ensure_ascii=False) + "\n```"
@@ -607,7 +634,8 @@ def callback_mantling(call):
         keyboard2 = mantle_stage_2_inline_keyboard(text_mark=json2['Марка'],
                                                    text_model=json2['Модель'],
                                                    text_number=json2['Номер'],
-                                                   text_driver=json2['Водитель'])
+                                                   text_driver=json2['Водитель'],
+                                                   text_fuel_card=json2['Паливна карта'])
 
         # Обновляем сообщение с новой клавиатурой
         bot.edit_message_text(
@@ -630,7 +658,8 @@ def callback_mantling(call):
         keyboard2 = mantle_stage_2_inline_keyboard(text_mark=json2['Марка'],
                                                    text_model=json2['Модель'],
                                                    text_number=json2['Номер'],
-                                                   text_driver=json2['Водитель'])
+                                                   text_driver=json2['Водитель'],
+                                                   text_fuel_card=json2['Паливна карта'])
 
 
         # Обновляем сообщение с новой клавиатурой
@@ -695,6 +724,13 @@ def callback_mantling(call):
         bot.register_next_step_handler(call.message,
                                        lambda message: user_input_text_mantling2(message, "driver"))
 
+    if call.data == "change_fuel_cart":
+        msg = bot.send_message(call.message.chat.id, "Введіть # паливної карти:")
+        put_in_message_list(call.message.chat.id, msg.message_id)
+
+        bot.register_next_step_handler(call.message,
+                                       lambda message: user_input_text_mantling2(message, "fuel_card"))
+
     if call.data == "update_mark":
         if call.message.chat.id in history_msg_mantling : delete_history_msg(call.message.chat.id)
 
@@ -705,7 +741,8 @@ def callback_mantling(call):
             keyboard = mantle_stage_2_inline_keyboard(text_mark=mantling_state[call.from_user.id]["mark"],
                                                       text_model=model_text,
                                                       text_number=number_text,
-                                                      text_driver=driver_text)
+                                                      text_driver=driver_text,
+                                                      text_fuel_card=fuel_card_text)
             mantling_state[call.from_user.id]["mark"] = "-"
 
             bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,
@@ -723,7 +760,8 @@ def callback_mantling(call):
             keyboard = mantle_stage_2_inline_keyboard( text_mark=mark_text,
                                                        text_model=mantling_state[call.from_user.id]["model"],
                                                     text_number=number_text,
-                                                       text_driver=driver_text)
+                                                       text_driver=driver_text,
+                                                       text_fuel_card=fuel_card_text)
             mantling_state[call.from_user.id]["model"] = "-"
             bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,
                                         reply_markup=keyboard)
@@ -740,7 +778,8 @@ def callback_mantling(call):
             keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
                                                       text_model=model_text,
                                                       text_number=mantling_state[call.from_user.id]["number"].upper(),
-                                                      text_driver=driver_text)
+                                                      text_driver=driver_text,
+                                                      text_fuel_card=fuel_card_text)
             mantling_state[call.from_user.id]["number"] = "-"
             bot.edit_message_reply_markup(
                     chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=keyboard
@@ -758,8 +797,28 @@ def callback_mantling(call):
             keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
                                                       text_model=model_text,
                                                       text_number=number_text,
-                                                      text_driver=mantling_state[call.from_user.id]["driver"])
+                                                      text_driver=mantling_state[call.from_user.id]["driver"],
+                                                      text_fuel_card=fuel_card_text)
             mantling_state[call.from_user.id]["driver"] = "-"
+
+            bot.edit_message_reply_markup(
+                chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=keyboard)
+        except Exception as e:
+            # print(f"Нема чого оновлювати: {e}")
+            pass
+        message_mantle = "-"
+
+    if call.data == "update_fuel_card":
+        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
+        if call.from_user.id not in mantling_state:
+            return  # якщо такого користувача немає
+        try:
+            keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
+                                                      text_model=model_text,
+                                                      text_number=number_text,
+                                                      text_driver=driver_text,
+                                                      text_fuel_card=mantling_state[call.from_user.id]["fuel_card"])
+            mantling_state[call.from_user.id]["fuel_card"] = "-"
 
             bot.edit_message_reply_markup(
                 chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=keyboard)
@@ -819,6 +878,7 @@ def callback_mantling(call):
         json2['Модель'] = model_text if model_text != "-" else "-"
         json2['Номер'] = number_text
         json2['Водитель'] = driver_text if driver_text!= "-" else "-"
+        json2['Паливна карта'] = fuel_card_text if fuel_card_text != "-" else "-"
         json2['ініціатор'] = call.from_user.username
 
         formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
@@ -827,7 +887,8 @@ def callback_mantling(call):
         """keyboard2 = mantle_stage_2_inline_keyboard(text_mark=json2['Марка'],
                                                    text_model=json2['Модель'],
                                                    text_number=json2['Номер'],
-                                                   text_driver=json2['Водитель'])"""
+                                                   text_driver=json2['Водитель']),
+                                                   text_fuel_card=json2['Паливна карта'])"""
         keyboard3 = mantle_stage_3_inline_keyboard()
 
         # Обновляем сообщение с новой клавиатурой
@@ -1034,8 +1095,6 @@ def callback_mantling(call):
 
                     # добавить сімку
 
-
-
                     response = info_wialon._update_phone(temp_obj['items'][0]['id'],f"%2B38{json1['Телефон']}")
                     sim = json1['Телефон']
 
@@ -1107,6 +1166,7 @@ def callback_mantling(call):
             f"shortEMEI    : `{json1['ИМЕИ'][-5:]}`\n"
             f"Cім               : `{sim}`\n\n"
             f"Errors:               : `{error_description}`\n"
+            f"Паливна карта:        : `{json2['Паливна карта']}`\n\n"
             f"Дата заявки      :  `{readable_time}`\n"
             f"Підтвердження: `{formatted_datetime}`\n"
             f"Затримка          : `{delay}`\n"
@@ -1515,6 +1575,7 @@ def mantling_emei_equipment(message):
             "Модель": "",
             "Номер": "",
             "Водитель": "",
+            "Паливна карта": "",
             "ініціатор": ""
         }
         try:
