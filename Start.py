@@ -1607,7 +1607,6 @@ def find_emei_function(message):
 def change_treker(message):
 
     print("функція пошуку трекера для заміни")
-
     #якщо введено число
     if message.text.isdigit():
 
