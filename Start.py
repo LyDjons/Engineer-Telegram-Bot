@@ -1,7 +1,9 @@
 from datetime import datetime
 import re
 from functools import wraps
+import time
 from click.decorators import pass_meta_key
+from telebot.apihelper import session
 from telebot.asyncio_helper import delete_message
 
 from fileeditor.FileManager import FileManager
@@ -174,7 +176,7 @@ def dismantling_gps_menu():
 def mantle_stage_1_inline_keyboard(change_claster ='-', change_ownership='-', change_group='-', change_subgroup='-'):
     keyboard = types.InlineKeyboardMarkup()
 
-    # Создание кнопок
+    # Створення кнопок
     btn1 = types.InlineKeyboardButton("Клатер", callback_data="None")
     btn2 = types.InlineKeyboardButton("Власність", callback_data="None")
     btn3 = types.InlineKeyboardButton("Група", callback_data="None")
@@ -195,6 +197,23 @@ def mantle_stage_1_inline_keyboard(change_claster ='-', change_ownership='-', ch
     keyboard.add(btn4,change_subgroup)
     keyboard.add(confirm)
     keyboard.add(cancel_mantle)
+
+    return keyboard
+
+def change_treker_inline_keyboard():
+    keyboard = types.InlineKeyboardMarkup()
+
+    # Створення кнопок
+    btn1 = types.InlineKeyboardButton("Знайти EMEI для заміни 🔎", callback_data="find_emei_change_treker")
+    btn2 = types.InlineKeyboardButton("Очистить 🧹", callback_data="clear_change_treker")
+    btn3 = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_change_treker")
+    cancel_change_treker = types.InlineKeyboardButton("Відмінити ❌", callback_data="cancel_change_treker")
+
+    # Добавление кнопок в клавиатуру
+    keyboard.add(btn1)
+    keyboard.add(btn2)
+    keyboard.add(btn3)
+    keyboard.add(cancel_change_treker)
 
     return keyboard
 
@@ -258,9 +277,11 @@ def ask_approve_confirmation(specificator:str):
     button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_dismantle") #бот
     button_yes2 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_dismantle") #чат
     button_yes3 = types.InlineKeyboardButton("Підтвердити ✅", callback_data="approve_mantle")  # бот
-    button_yes4 = types.InlineKeyboardButton("Підтвердити ✅", callback_data="approve_change_treker")  # бот
+    button_yes4 = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_change_treker")  # бот
+    button_yes5 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_change_treker")  # бот
 
     button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline_dismantle")
+    button_no2 = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline_change_treker")
 
     if specificator == "confirm_dismantle":
         markup.add(button_yes, button_no)
@@ -269,7 +290,10 @@ def ask_approve_confirmation(specificator:str):
     if specificator == "approve_mantle":
         markup.add(button_yes3, button_no)
     if specificator == "confirm_change_treker":
-        markup.add(button_yes4, button_no)
+        markup.add(button_yes4, button_no2)
+    if specificator == "approve_change_treker":
+        markup.add(button_yes5, button_no2)
+
     return markup
 
 def ask_confirmation(message, count:int, spec_message: str, specificator="simple"):
@@ -305,6 +329,7 @@ def test_function(message):
     # Выводим ID и Username
     bot.reply_to(message, f"User ID: {user_id}\nUsername: @{username}")
     print(f"User ID: {user_id}\nUsername: @{username}")
+    return "A-a-a-a-a-ahhH!!!"
 
 def put_in_message_list(ures_id,message_id):
     """
@@ -474,6 +499,9 @@ def add_to_wialon_group(obj_id,json_info,session):
                                                             "change_number","change_driver","update_mark","update_model",
                                                             "update_number","update_driver","confirm_mantling2",
                                                             "change_fuel_cart","update_fuel_card",
+                                                            "cancel_change_treker","clear_change_treker",
+                                                            "find_emei_change_treker","cancel_change_treker",
+                                                            "confirm_change_treker",
                                                             "confirm_mantling3","back_mantling2","approve_mantle"])
 @check_permissions
 def callback_mantling(call):
@@ -603,6 +631,44 @@ def callback_mantling(call):
             #print(f"Нема чого оновлювати: {e}")
             pass
 
+
+    if call.data == "clear_change_treker":
+        #Ця штука робить чистку другого json-а
+
+        # отримуємо першу і другу форму
+        json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+        json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+        json1 = json.loads(json1)
+        json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+        json2 = json.loads(json2)
+        json2["Модель"] = ""
+        json2["Серія"] = ""
+        json2["ИМЕИ"] = ""
+        json2["ИМЕИ2"] = ""
+        json2["Телефон"] = ""
+        json2["Склад"] = ""
+        json2["Ініціатор"] = ""
+
+        formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
+                          f"```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```")
+
+        keyboard = change_treker_inline_keyboard()
+
+        try:
+            # Обновляем сообщение с новой клавиатурой
+            bot.edit_message_text(
+                formatted_text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                reply_markup=keyboard,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            print(f"Я все почистив, але нема що оновлювать")
+
+        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
+
+
     if call.data == "confirm_mantling":
 
         if check_mantling_status(claster_text,ownership_text,group_text,subgroup_text) == False:
@@ -703,6 +769,15 @@ def callback_mantling(call):
             message_id=call.message.message_id,
             reply_markup=keyboard
         )
+
+    if call.data == "find_emei_change_treker":
+        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
+        msg = bot.send_message(call.message.chat.id, "Введіть EMEI який будете ставить:")
+        put_in_message_list(call.message.chat.id, msg.message_id)
+
+        #bot.register_next_step_handler(msg, find_emei_to_change_treker)  # Чекаємо на введення
+        #пробуэмо передати call у функцію
+        bot.register_next_step_handler(msg, lambda message: find_emei_to_change_treker(message, call))
 
     if call.data == "change_mark":
         msg = bot.send_message(call.message.chat.id, "Введіть марку транспорту:")
@@ -835,12 +910,19 @@ def callback_mantling(call):
             pass
         message_mantle = "-"
 
+
     if call.data == "cancel_mantling":
         # видаляємо повідомлення
         bot.delete_message(call.message.chat.id, call.message.message_id)
         message_mantle = "-"
         if call.from_user.id in mantling_state:
             del mantling_state[call.from_user.id]
+
+    if call.data == "cancel_change_treker":
+        # видаляємо повідомлення
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        message_mantle = "-"
+
 
     if call.data == "confirm_mantling2":
 
@@ -923,6 +1005,28 @@ def callback_mantling(call):
         # Удаляем сообщение в чате бота после отправки
         bot.delete_message(call.message.chat.id, call.message.message_id)
         bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Монтаж відправлено в основний чат",
+                         parse_mode="MarkdownV2")
+
+    if call.data == "confirm_change_treker":
+
+        message_text = call.message.text
+        #перевірка та видалення зайвих табуляцій між знаками }{
+        if re.search(r'\}\s*\n\s*\n\s*\{', message_text):
+            message_text = re.sub(r'\}\s*\n\s*\n\s*\{', '}\n{', message_text)
+
+        try:
+            bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```",
+                             parse_mode="MarkdownV2",
+                             reply_markup=ask_approve_confirmation("approve_change_treker"),
+                             message_thread_id=THREAD_ID)
+        except Exception as e:
+            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ID}")
+            return
+
+        # Удаляем сообщение в чате бота после отправки
+        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        bot.send_message(call.message.chat.id, f"```\n{message_text}\n```Заміну трекера відправлено в основний чат",
                          parse_mode="MarkdownV2")
 
     if call.data == "approve_mantle":
@@ -1020,7 +1124,6 @@ def callback_mantling(call):
                 if len(temp_obj['items']) == 0:
                     # Визначення протоколу та id_creator
 
-                    print(json2["Кластер"]=="CА")
                     creator_id = info_wialon._get_creator_if_from_claster_ua(json2["Кластер"])
                     protocol_id = info_wialon._get_id_and_pass_protocol_for_user_mask(json1["Серия"])[0]
                     protocol_name = info_wialon._device_type(protocol_id)
@@ -1199,6 +1302,92 @@ def get_button_text_by_callback(callback_data, keyboard_data):
                 return button['text']  # Возвращаем текст кнопки
     return None  # Если кнопка не найдена
 
+def find_emei_to_change_treker(message,call):
+    put_in_message_list(message.chat.id, message.id)
+    emei = message.text  # Отримуємо введене значення
+    msg = bot.send_message(message.chat.id, f"Ви ввели: {emei}. Чекайте, я перевіряю...")  # Відправляємо підтвердження
+    put_in_message_list(message.chat.id, msg.message_id)
+
+
+    #отримуємо дані з call
+    json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+    json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+    json1 = json.loads(json1)
+    json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+    json2 = json.loads(json2)
+
+
+    # починаємо пошук еймей в Ексейль - якщо є не один, то помилка
+    try:
+        file_excel = ExcellLoader()
+        json_list = file_excel.create_base_list()
+
+        result = file_excel.find_emei(message.text, json_list)
+        if (len(result) > 1) or (len(result) == 0)  :
+
+            msg =bot.send_message(message.chat.id, f"Я знайшов {len(result)} таких трекерів в базі!\n"
+                                              f" EMEI має бути унікальним! Спробуй ще раз)")
+            put_in_message_list(message.chat.id, msg.message_id)
+            return
+
+        if len(result) == 1:
+
+            try:
+                session = WialonManager(WIALON_URL, WIALON_TOKEN)
+                myjson = session._get_json_uid_for_emei(result[0]["ИМЕИ"])
+                print(myjson)
+                #перевіряємо знайдений емей в ексель базі в Віалоні. Якщо такого емей у Віалоні нема, то
+                #заносимо знайдений емей в другий json в call
+                if len(myjson["wialon"]) == 0:
+
+                    json2["Модель"] = result[0]["Модель"]
+                    json2["Серія"] = result[0]["Серия"]
+                    json2["ИМЕИ"] = result[0]["ИМЕИ"]
+                    json2["ИМЕИ2"] = result[0]["ИМЕИ2"]
+                    json2["Телефон"] = result[0]["Телефон"]
+                    json2["Ініціатор"] =call.from_user.username
+
+                    formatted_text = (f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n"
+                                      f"```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```")
+                    keyboard = change_treker_inline_keyboard()
+                    try:
+                        # Обновляем сообщение с новой клавиатурой
+                        bot.edit_message_text(
+                            formatted_text,
+                            chat_id=call.message.chat.id,
+                            message_id=call.message.message_id,
+                            reply_markup=keyboard,
+                            parse_mode='Markdown'
+                        )
+
+                    except Exception as e:
+                        print(f"Я все почистив, але нема що оновлювать")
+
+                    if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
+
+                    find_sim_obj_name = session._get_name_obj_for_device_phone(phone = f"*{result[0]["Телефон"]}")
+                    if (find_sim_obj_name!="Not found"):
+                        msg = bot.send_message(message.chat.id, f"Сімка {result[0]["Телефон"]} належить об'єкту:"
+                                                                f"\n{find_sim_obj_name}\nЯ не зможу прописать сімку "
+                                                                f"другий раз."
+                                                                f"Розбери, перевір, інакше зроблю монтаж без сімки")
+                        put_in_message_list(message.chat.id, msg.message_id)
+
+                # якщо з таким EMEI знайдено більше 1 обєкта
+                
+            except Exception as e:
+                msg = bot.send_message(message.chat.id, "Виникла помилка перевірки EMEI у Wialon.")
+                put_in_message_list(message.chat.id, msg.message_id)
+                return
+
+
+    except Exception as e:
+        msg = bot.send_message(message.chat.id, f"Сталася помилка пошуку EMEI у Віалоні: {e}")
+        put_in_message_list(message.chat.id, msg.message_id)
+        return
+
+    # опчинаємо пошук еймей в Wialon - якщо є то помилка
+
 @bot.message_handler(commands=['get_chat_id'])
 @check_permissions
 def get_chat_id(message):
@@ -1215,7 +1404,8 @@ def start(message):
 
 @bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","yes_find"
                                                             ,"show_dismantling","show_mantling","show_change_treker"
-                                                            ,"approve_dismantle","decline_dismantle"])
+                                                            ,"approve_dismantle","decline_dismantle",
+                                                            "decline_change_treker","approve_change_treker"])
 @check_permissions
 def handle_callback(call):
     print(f"call data = {call.data}")
@@ -1289,7 +1479,7 @@ def handle_callback(call):
         message_text = call.message.text
 
         try:
-            bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```" ,
+            bot.send_message(ENGINEER_CHAT_ID, f"```{message_text}```" ,
                              parse_mode="MarkdownV2",
                              reply_markup=ask_approve_confirmation("approve_dismantle"),
                              message_thread_id=THREAD_ID)
@@ -1403,6 +1593,131 @@ def handle_callback(call):
 
     elif call.data == "decline_dismantle":
         bot.delete_message(call.message.chat.id, call.message.message_id)
+
+    elif call.data == "approve_change_treker":
+        # Коли в чат падає заявка, то тільки адміністратор або власник може натиснути "approve"
+        try:
+            chat_member = bot.get_chat_member(call.message.chat.id, call.from_user.id)
+            print(f"Role: {chat_member.status}")
+            if chat_member.status not in ["administrator", "creator"]:
+                return
+        except telebot.apihelper.ApiTelegramException as e:
+            print(f"Ошибка: {e}")
+            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
+            return
+
+        # отримуємо першу і другу форму
+        json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+        json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+        json1 = json.loads(json1)
+        json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+        json2 = json.loads(json2)
+
+        # Зберігаємо  ідентифікатор старого повідомлення
+        old_message_id = call.message.message_id
+
+        error_description = ""
+
+        try:
+            info_wialon = WialonManager(WIALON_URL, WIALON_TOKEN)
+            protocol_id,protocol_pass = info_wialon._get_id_and_pass_protocol_for_user_mask(json2["Серія"])
+
+            protocol_name = info_wialon._device_type(protocol_id)
+
+            print(f"protocol id = {protocol_id}\n"
+                  f"protocol pass = {protocol_pass}\n"
+                  f"protocol name = {protocol_name}")
+
+            #по id об'єкту встановити новий емей та протокол
+            info_wialon._update_protocol_imei(json1["id"],protocol_id,json2["ИМЕИ"])
+            
+            #обнуляємо СІМ
+            info_wialon._update_phone(json1["id"], f"")
+            response = info_wialon._update_phone(json1["id"], f"%2B38{json2['Телефон']}")
+
+            if 'error' in response:
+                name_with_phone = info_wialon._get_name_obj_for_device_phone(phone=f"*{json2['Телефон']}")
+                info_wialon._update_phone(json1["id"], "")
+
+                error_description += f"Не вдалось прописати SIM карту. Уже є в об'єкті: {name_with_phone}"
+
+            # добавляємо пароль протоколу
+            info_wialon._update_protocol_password(json1['id'], '\"\"')
+            info_wialon._update_protocol_password(json1['id'], protocol_pass)
+
+
+            info_wialon._create_udate_voltage_sensors(json1["id"])
+
+
+        except Exception as e:
+            print(f"Помилка заміни трекера: {e}")
+            bot.send_message(call.message.chat.id, f"Помилка заміни трекера: {e}", message_thread_id=THREAD_ID)
+
+        # Получаем время отправки сообщения
+        message_time = call.message.date
+
+        # Преобразуем Unix timestamp в читаемый формат
+        readable_time = datetime.fromtimestamp(message_time)
+        # print(f"Value of 'nm': {nm_value}")
+
+        # Отримуємо поточну дату та час
+        current_datetime = datetime.now()
+        # Форматуємо дату та час
+        formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        # Вычисление разницы во времени
+        delay = current_datetime - readable_time
+
+        # Отримуємо кількість днів, годин та хвилин
+        days = delay.days
+        hours, remainder = divmod(delay.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        formatted_delay = f"{days}д {hours}г {minutes}х {seconds}с"
+
+
+        formatted_message = (
+            f"operation    : `{json2["Операція"]}`\n\n"
+            f"демонтаж          : `{json1["nm"]}`\n"
+            f"Протокол   : `{json1["protocol"]}`\n"
+            f"EMEI            : `{json1["uid"]}`\n"
+            f"shortEMEI    : `{json1["uid"][-5:]}`\n"
+            f"Cім               : `{json1["ph"]}`\n\n"
+            
+            f"монтаж          : `{json1["nm"]}`\n"
+            f"Модель   : `{json2["Модель"]}`\n"
+            f"Серія   : `{json2["Серія"]}`\n"
+            f"Протокол   : `{"no info"}`\n"
+            f"EMEI            : `{json2["ИМЕИ"]}`\n"
+            f"shortEMEI    : `{json2["ИМЕИ"][-5:]}`\n"
+            f"Cім           : `{json2["Телефон"]}`\n\n"
+            
+            f"errors        : `{error_description}`\n\n"
+            
+            f"Дата заявки      :  `{readable_time}`\n"
+            f"Підтвердження: `{formatted_datetime}`\n"
+            f"Затримка          : `{formatted_delay}`\n"
+            f"Ініціатор            :  `{json2["Ініціатор"]}`"
+        )
+
+        bot.delete_message(call.message.chat.id, old_message_id)
+        bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                         message_thread_id=THREAD_ID)
+
+
+    elif call.data == "decline_change_treker":
+
+        # Коли в чат падає заявка, то тільки адміністратор або власник може натиснути "Cancel"
+        try:
+            chat_member = bot.get_chat_member(call.message.chat.id, call.from_user.id)
+            print(f"Role: {chat_member.status}")
+            if chat_member.status not in ["administrator", "creator"]:
+                return
+        except telebot.apihelper.ApiTelegramException as e:
+            print(f"Ошибка: {e}")
+            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
+            return
+
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+
 
     # Закриваємо "завантаження" кнопки
     #bot.answer_callback_query(call.message.chat.id)
@@ -1530,7 +1845,7 @@ def menu_handler(message):
     elif message.text == 'Конвертер тарувальних таблиць':
         bot.send_message(message.chat.id, "Зробіть ваш вибір:", reply_markup=fueltable_convert_menu())
     elif message.text == 'Інформація про бот 🤖':
-        bot.send_message(message.chat.id, "А я вам пакажу откудава готовілось нападєніє")
+        bot.send_message(message.chat.id, "Костюм не готовий до бою, сер.")
     elif message.text == 'По держ. номеру':
         bot.send_message(message.chat.id, "Введіть держ номер в форматі СВ1234ЕА:")
         bot.register_next_step_handler(message, find_function)
@@ -1618,13 +1933,38 @@ def change_treker(message):
             # якщо з таким EMEI знайдено більше 1 обєкта
             if len(myjson["wialon"]) > 1:
                 ask_confirmation(message, count_obj,
-                                 "\nЯ зможу зробити заміну трекера тільки в тому випадку, коли знятий EMEI унікальний.\n"
+                                 "\nЯ зможу зробити заміну трекера тільки в тому випадку, коли знятий"
+                                 "трекер має унікальний EMEI.\n"
                                  "Інакше виведу результат пошуку але не більше 10!", "change_treker")
                 user_state[message.from_user.id] = {
                     'wialon_change_treker_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
 
             if len(myjson["wialon"]) == 1:
-                myjson["wialon"][0] = {"operation": "заміна_трекера", "creator": message.from_user.username,
+                json_form_2 = {
+                    "Операція": "заміна трекера",
+                    "Модель": "",
+                    "Серія": "",
+                    "ИМЕИ": "",
+                    "ИМЕИ2": "",
+                    "Телефон": "",
+                    "Склад": "",
+                    "Ініціатор":""
+                }
+
+
+                formatted_text = (f"```\n{json.dumps(myjson["wialon"][0], indent=4, ensure_ascii=False)}\n```\n"
+                                  f"```\n{json.dumps(json_form_2, indent=4, ensure_ascii=False)}\n```")
+
+                keyboard = change_treker_inline_keyboard()
+
+                bot.send_message(
+                    message.chat.id,
+                    formatted_text,
+                    parse_mode="MarkdownV2",
+                    reply_markup=keyboard
+                )
+
+                """myjson["wialon"][0] = {"operation": "заміна трекера", "creator": message.from_user.username,
                                        **myjson["wialon"][0]}
                 bot.send_message(message.chat.id,
                                  f"```\n{json.dumps(myjson["wialon"][0],
@@ -1633,10 +1973,10 @@ def change_treker(message):
                                  reply_markup=ask_approve_confirmation("confirm_change_treker"))
 
                 user_state[message.from_user.id] = {
-                    'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
+                    'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів"""
 
             if len(myjson["wialon"]) == 0:
-                bot.send_message(message.chat.id, "Я нічого не знайшов. Спробуйте ще раз")
+                bot.send_message(message.chat.id, "Я нічого не знайшов у Wialon. Спробуйте ще раз")
 
         except Exception as e:
             print(f"Сталася помилка: {e}")
@@ -1936,4 +2276,11 @@ def wait_for_file_DU02(message):
         bot.register_next_step_handler(message, wait_for_file_DU02)  # Чекаєм знову файл
 
 
-bot.polling(none_stop=True)
+#bot.polling(none_stop=True)
+
+while True:
+    try:
+        bot.polling(none_stop=True, interval=0, timeout=20)
+    except Exception as e:
+        print(f"Помилка: {e}")
+        time.sleep(5)  # Почекати перед повторною спробою

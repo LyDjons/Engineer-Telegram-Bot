@@ -573,7 +573,7 @@ class WialonManager:
         data = response.json()
         return data
 
-    def _update_protocol_password(self,id_obj,password=""):
+    def _update_protocol_password(self,id_obj,password='\"\"'):
         """
         Змінити пароль до протоколу
         :param id_obj:
@@ -892,6 +892,8 @@ class WialonManager:
         # BI 530R TREK = 1956
 
         if mask == "FMS 500 Tacho SDK": return [3183,""]
+        if mask == "FMS 500 Tacho": return [3533,""]
+        if mask == "FMS 500 StCAN": return [3184,""]
         if mask == "810": return [14,""]
         if mask == "810 Connect": return [23,"1111"]
         if mask == "820 OBD": return [8,""]
