@@ -1478,11 +1478,14 @@ def handle_callback(call):
         user_state.pop(user_id, None)
         message_text = call.message.text
 
+
         try:
             bot.send_message(ENGINEER_CHAT_ID, f"```{message_text}```" ,
                              parse_mode="MarkdownV2",
                              reply_markup=ask_approve_confirmation("approve_dismantle"),
                              message_thread_id=THREAD_ID)
+
+
         except Exception as e:
             bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ID}")
             return
@@ -1495,6 +1498,7 @@ def handle_callback(call):
 
     #чат
     elif call.data == "approve_dismantle":
+
         print(f"User : {call.from_user.id} name = {call.from_user.first_name} "
               f"push '{call.data}' "
               f"Chat ID '{call.message.chat.id}' "
@@ -1513,10 +1517,12 @@ def handle_callback(call):
 
         # Зберігаємо  ідентифікатор старого повідомлення
         old_message_id = call.message.message_id
-
-        #print(call.message.text)
+        print(call.message.text)
         # конвертуэмо строку в словник
+
         message_dict = json.loads(call.message.text)
+
+
         # отримуэмо значення  "nm"
         #nm_value = message_dict.get("nm")
         # Получаем время отправки сообщения
@@ -1553,6 +1559,8 @@ def handle_callback(call):
             f"Ініціатор            :  `{message_dict.get('creator')}`"
         )
 
+
+
         try:
             session = WialonManager(WIALON_URL, WIALON_TOKEN)
             #print(session._get_info())
@@ -1562,6 +1570,8 @@ def handle_callback(call):
                                             "sys_unique_id",
                                             f"*{message_dict.get('uid')}*",
                                             "sys_unique_id", 1, 1 + 256, 0, 10000)
+
+
             if not my_json['items']:
                 print("не найдено EMEI")
                 return
@@ -2091,9 +2101,11 @@ def dismantling_emei_equipment(message):
 
             if len(myjson["wialon"]) ==1:
                 myjson["wialon"][0] = {"operation": "демонтаж", "creator": message.from_user.username, **myjson["wialon"][0] }
+
+
+                json_text = json.dumps(myjson["wialon"][0], indent=4, ensure_ascii=False)
                 bot.send_message(message.chat.id,
-                                 f"```\n{json.dumps(myjson["wialon"][0], 
-                                    indent=4, ensure_ascii=False)}\n```",
+                                 f"```\n {json_text} \n```",
                                      parse_mode = "MarkdownV2",
                                  reply_markup=ask_approve_confirmation("confirm_dismantle"))
 
