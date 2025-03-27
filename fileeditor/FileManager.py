@@ -58,7 +58,7 @@ class FileManager:
             #liters = row['Літри']
             #level = row['Рівень']
             #print(f"Строка {index}: Літри = {row['Літри']}, Рівень = {row['Рівень']}")
-            table_data.append((int(row['Рівень']), int(row['Літри'])))
+            table_data.append((int(row['Літри']), int(row['Рівень'])))
         self.__table_dut = table_data
 
         #Видаляємо тимчасову таблицю
