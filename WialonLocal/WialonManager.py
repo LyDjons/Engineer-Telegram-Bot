@@ -895,7 +895,7 @@ class WialonManager:
         if mask == "FMS 500 Tacho": return [3533,""]
         if mask == "FMS 500 StCAN": return [3184,""]
         if mask == "810": return [14,""]
-        if mask == "810 Connect": return [23,"1111"]
+        if mask == "810 Connect": return [23,"IPS"]
         if mask == "820 OBD": return [8,""]
         if mask == "910": return [15,""]
         if mask == "868": return [12, ""]

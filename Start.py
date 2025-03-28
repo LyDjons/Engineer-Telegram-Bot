@@ -1644,6 +1644,7 @@ def handle_callback(call):
 
         error_description = ""
         protocol_name = "no info"
+        protocol_pass = "no info"
 
         try:
             info_wialon = WialonManager(WIALON_URL, WIALON_TOKEN)
@@ -1700,6 +1701,7 @@ def handle_callback(call):
         minutes, seconds = divmod(remainder, 60)
         formatted_delay = f"{days}д {hours}г {minutes}х {seconds}с"
 
+
         formatted_message = (
             f"operation    : `{json2["Операція"]}`\n\n"
             f"демонтаж          : `{json1["nm"]}`\n"
@@ -1714,7 +1716,8 @@ def handle_callback(call):
             f"Протокол   : `{protocol_name}`\n"
             f"EMEI            : `{json2["ИМЕИ"]}`\n"
             f"shortEMEI    : `{json2["ИМЕИ"][-5:]}`\n"
-            f"Cім           : `{json2["Телефон"]}`\n\n"
+            f"Cім           : `{json2["Телефон"]}`\n"
+            f"pass           : `{protocol_pass}`\n\n"
             
             f"errors        : `{error_description}`\n\n"
             
