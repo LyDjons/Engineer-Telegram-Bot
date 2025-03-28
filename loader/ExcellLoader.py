@@ -63,15 +63,19 @@ class ExcellLoader:
         :param json_list: лист з json де будемо шукати
         :return: повертаэ лист з знайденими json
         """
-
         if not part_emei.isdigit():
             return []
         search_list = []
         for item in json_list:
             if item["ИМЕИ"].endswith(part_emei) or item["ИМЕИ2"].endswith(part_emei):
+                #если телефон начинается не с ноля и имеет 9 символов, то ставим в начале ноль
+                if len(item['Телефон'])==9 and (not item['Телефон'].startswith('0')):
+                    item['Телефон'] = '0' + item['Телефон']
+
                 search_list.insert(0,item)
             elif part_emei in item["ИМЕИ"] or part_emei in item["ИМЕИ2"]:
                 search_list.append(item)
+
 
         return search_list
 

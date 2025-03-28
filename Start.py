@@ -775,8 +775,7 @@ def callback_mantling(call):
         msg = bot.send_message(call.message.chat.id, "Введіть EMEI який будете ставить:")
         put_in_message_list(call.message.chat.id, msg.message_id)
 
-        #bot.register_next_step_handler(msg, find_emei_to_change_treker)  # Чекаємо на введення
-        #пробуэмо передати call у функцію
+        #передаємо call у функцію
         bot.register_next_step_handler(msg, lambda message: find_emei_to_change_treker(message, call))
 
     if call.data == "change_mark":
@@ -1334,6 +1333,7 @@ def find_emei_to_change_treker(message,call):
         json_list = file_excel.create_base_list()
 
         result = file_excel.find_emei(message.text, json_list)
+
         if (len(result) > 1) or (len(result) == 0)  :
 
             msg =bot.send_message(message.chat.id, f"Я знайшов {len(result)} таких трекерів в базі!\n"
@@ -1387,7 +1387,7 @@ def find_emei_to_change_treker(message,call):
                 # якщо з таким EMEI знайдено більше 1 обєкта
                 if(len(myjson["wialon"])>0):
                     msg = bot.send_message(call.message.chat.id,
-                                           f"Я знайшов уже такий EMEI у Wialon в обєкті:\n"
+                                           f"Я знайшов такий EMEI = {result[0]["ИМЕИ"]} у Wialon в обєкті:\n"
                                            f"{myjson["wialon"][0]['nm']}\n"
                                            f"Я не зможу зробити монтаж. Зробіть спочатку демонтаж")
                     put_in_message_list(call.message.chat.id, msg.message_id)
@@ -1643,6 +1643,7 @@ def handle_callback(call):
         old_message_id = call.message.message_id
 
         error_description = ""
+        protocol_name = "no info"
 
         try:
             info_wialon = WialonManager(WIALON_URL, WIALON_TOKEN)
@@ -1699,7 +1700,6 @@ def handle_callback(call):
         minutes, seconds = divmod(remainder, 60)
         formatted_delay = f"{days}д {hours}г {minutes}х {seconds}с"
 
-
         formatted_message = (
             f"operation    : `{json2["Операція"]}`\n\n"
             f"демонтаж          : `{json1["nm"]}`\n"
@@ -1711,7 +1711,7 @@ def handle_callback(call):
             f"монтаж          : `{json1["nm"]}`\n"
             f"Модель   : `{json2["Модель"]}`\n"
             f"Серія   : `{json2["Серія"]}`\n"
-            f"Протокол   : `{"no info"}`\n"
+            f"Протокол   : `{protocol_name}`\n"
             f"EMEI            : `{json2["ИМЕИ"]}`\n"
             f"shortEMEI    : `{json2["ИМЕИ"][-5:]}`\n"
             f"Cім           : `{json2["Телефон"]}`\n\n"
