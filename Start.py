@@ -1009,6 +1009,17 @@ def callback_mantling(call):
 
     if call.data == "confirm_change_treker":
 
+        json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
+        #json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
+        #json1 = json.loads(json1)
+        json2 = "{" + json_match[1].strip().replace("\n", "").replace("    ", "") + "}"
+        json2 = json.loads(json2)
+
+        if json2['ИМЕИ'] =='':
+            msg = bot.send_message(call.message.chat.id, "Ви не ввели EMEI для заміни. Я не можу створити заявку.")
+            put_in_message_list(call.message.chat.id, msg.message_id)
+            return
+
         message_text = call.message.text
         #перевірка та видалення зайвих табуляцій між знаками }{
         if re.search(r'\}\s*\n\s*\n\s*\{', message_text):
@@ -1374,7 +1385,15 @@ def find_emei_to_change_treker(message,call):
                         put_in_message_list(message.chat.id, msg.message_id)
 
                 # якщо з таким EMEI знайдено більше 1 обєкта
-                
+                if(len(myjson["wialon"])>0):
+                    msg = bot.send_message(call.message.chat.id,
+                                           f"Я знайшов уже такий EMEI у Wialon в обєкті:\n"
+                                           f"{myjson["wialon"][0]['nm']}\n"
+                                           f"Я не зможу зробити монтаж. Зробіть спочатку демонтаж")
+                    put_in_message_list(call.message.chat.id, msg.message_id)
+                    return
+
+
             except Exception as e:
                 msg = bot.send_message(message.chat.id, "Виникла помилка перевірки EMEI у Wialon.")
                 put_in_message_list(message.chat.id, msg.message_id)
@@ -1478,7 +1497,6 @@ def handle_callback(call):
         user_state.pop(user_id, None)
         message_text = call.message.text
 
-
         try:
             bot.send_message(ENGINEER_CHAT_ID, f"```{message_text}```" ,
                              parse_mode="MarkdownV2",
@@ -1517,11 +1535,9 @@ def handle_callback(call):
 
         # Зберігаємо  ідентифікатор старого повідомлення
         old_message_id = call.message.message_id
-        print(call.message.text)
+
         # конвертуэмо строку в словник
-
         message_dict = json.loads(call.message.text)
-
 
         # отримуэмо значення  "nm"
         #nm_value = message_dict.get("nm")
@@ -1973,17 +1989,6 @@ def change_treker(message):
                     parse_mode="MarkdownV2",
                     reply_markup=keyboard
                 )
-
-                """myjson["wialon"][0] = {"operation": "заміна трекера", "creator": message.from_user.username,
-                                       **myjson["wialon"][0]}
-                bot.send_message(message.chat.id,
-                                 f"```\n{json.dumps(myjson["wialon"][0],
-                                                    indent=4, ensure_ascii=False)}\n```",
-                                 parse_mode="MarkdownV2",
-                                 reply_markup=ask_approve_confirmation("confirm_change_treker"))
-
-                user_state[message.from_user.id] = {
-                    'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів"""
 
             if len(myjson["wialon"]) == 0:
                 bot.send_message(message.chat.id, "Я нічого не знайшов у Wialon. Спробуйте ще раз")
