@@ -361,7 +361,6 @@ def user_input_text_mantling2(message, additional_param: str):
                                       f"Натисніть для оновлення 🔄")
     put_in_message_list(message.chat.id, msg.message_id)
 
-
     if message.from_user.id not in mantling_state:
         mantling_state[message.from_user.id] = {
             "mark":"-",
