@@ -1375,7 +1375,7 @@ def find_emei_to_change_treker(message,call):
 
                     if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
 
-                    find_sim_obj_name = session._get_name_obj_for_device_phone(phone = f"*{result[0]["Телефон"]}")
+                    find_sim_obj_name = session._get_name_obj_for_device_phone(phone = f"*{result[0]['Телефон']}")
                     if (find_sim_obj_name!="Not found"):
                         msg = bot.send_message(message.chat.id, f"Сімка {result[0]["Телефон"]} належить об'єкту:"
                                                                 f"\n{find_sim_obj_name}\nЯ не зможу прописать сімку "
