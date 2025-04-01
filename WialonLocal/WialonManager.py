@@ -10,14 +10,14 @@ from unicodedata import category
 from webbrowser import Error
 
 import pytz
-from turtledemo.clock import datum
+#from turtledemo.clock import datum
 
 import pytz
 import requests
 from oauthlib.uri_validate import query
 from openpyxl.descriptors import String
 
-from WialonLocal.WialonAuth import login
+#from WialonLocal.WialonAuth import login
 class WialonManager:
 
     def __init__(self, base_url,token):

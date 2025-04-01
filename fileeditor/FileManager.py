@@ -1,4 +1,4 @@
-from idlelib.iomenu import encoding
+#from idlelib.iomenu import encoding
 import re
 import chardet
 import io

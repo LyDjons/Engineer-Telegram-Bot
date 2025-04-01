@@ -1377,7 +1377,7 @@ def find_emei_to_change_treker(message,call):
 
                     find_sim_obj_name = session._get_name_obj_for_device_phone(phone = f"*{result[0]['Телефон']}")
                     if (find_sim_obj_name!="Not found"):
-                        msg = bot.send_message(message.chat.id, f"Сімка {result[0]["Телефон"]} належить об'єкту:"
+                        msg = bot.send_message(message.chat.id, f"Сімка {result[0]['Телефон']} належить об'єкту:"
                                                                 f"\n{find_sim_obj_name}\nЯ не зможу прописать сімку "
                                                                 f"другий раз."
                                                                 f"Розбери, перевір, інакше зроблю монтаж без сімки")
@@ -1386,8 +1386,8 @@ def find_emei_to_change_treker(message,call):
                 # якщо з таким EMEI знайдено більше 1 обєкта
                 if(len(myjson["wialon"])>0):
                     msg = bot.send_message(call.message.chat.id,
-                                           f"Я знайшов такий EMEI = {result[0]["ИМЕИ"]} у Wialon в обєкті:\n"
-                                           f"{myjson["wialon"][0]['nm']}\n"
+                                           f"Я знайшов такий EMEI = {result[0]['ИМЕИ']} у Wialon в обєкті:\n"
+                                           f"{myjson['wialon'][0]['nm']}\n"
                                            f"Я не зможу зробити монтаж. Зробіть спочатку демонтаж")
                     put_in_message_list(call.message.chat.id, msg.message_id)
                     return
@@ -1605,7 +1605,7 @@ def handle_callback(call):
             session._add_in_history(my_json.get("items")[0].get("id"))
             #видаляємо об'єкт з усіх основних групп крім *історія
             session._delete_obj_from_groups(id, "", "історія")
-            print(f"Успішно видалений: {my_json.get("items")[0].get("nm")} ")
+            print(f"Успішно видалений: {my_json.get('items')[0].get('nm')} ")
             print(my_json.get("items")[0])
 
 
@@ -1702,20 +1702,20 @@ def handle_callback(call):
 
 
         formatted_message = (
-            f"operation    : `{json2["Операція"]}`\n\n"
-            f"демонтаж          : `{json1["nm"]}`\n"
-            f"Протокол   : `{json1["protocol"]}`\n"
-            f"EMEI            : `{json1["uid"]}`\n"
-            f"shortEMEI    : `{json1["uid"][-5:]}`\n"
-            f"Cім               : `{json1["ph"]}`\n\n"
+            f"operation    : `{json2['Операція']}`\n\n"
+            f"демонтаж          : `{json1['nm']}`\n"
+            f"Протокол   : `{json1['protocol']}`\n"
+            f"EMEI            : `{json1['uid']}`\n"
+            f"shortEMEI    : `{json1['uid'][-5:]}`\n"
+            f"Cім               : `{json1['ph']}`\n\n"
             
-            f"монтаж          : `{json1["nm"]}`\n"
-            f"Модель   : `{json2["Модель"]}`\n"
-            f"Серія   : `{json2["Серія"]}`\n"
+            f"монтаж          : `{json1['nm']}`\n"
+            f"Модель   : `{json2['Модель']}`\n"
+            f"Серія   : `{json2['Серія']}`\n"
             f"Протокол   : `{protocol_name}`\n"
-            f"EMEI            : `{json2["ИМЕИ"]}`\n"
-            f"shortEMEI    : `{json2["ИМЕИ"][-5:]}`\n"
-            f"Cім           : `{json2["Телефон"]}`\n"
+            f"EMEI            : `{json2['ИМЕИ']}`\n"
+            f"shortEMEI    : `{json2['ИМЕИ'][-5:]}`\n"
+            f"Cім           : `{json2['Телефон']}`\n"
             f"pass           : `{protocol_pass}`\n\n"
             
             f"errors        : `{error_description}`\n\n"
@@ -1723,7 +1723,7 @@ def handle_callback(call):
             f"Дата заявки      :  `{readable_time}`\n"
             f"Підтвердження: `{formatted_datetime}`\n"
             f"Затримка          : `{formatted_delay}`\n"
-            f"Ініціатор            :  `{json2["Ініціатор"]}`"
+            f"Ініціатор            :  `{json2['Ініціатор']}`"
         )
 
         bot.delete_message(call.message.chat.id, old_message_id)
@@ -1980,7 +1980,7 @@ def change_treker(message):
                 }
 
 
-                formatted_text = (f"```\n{json.dumps(myjson["wialon"][0], indent=4, ensure_ascii=False)}\n```\n"
+                formatted_text = (f"```\n{json.dumps(myjson['wialon'][0], indent=4, ensure_ascii=False)}\n```\n"
                                   f"```\n{json.dumps(json_form_2, indent=4, ensure_ascii=False)}\n```")
 
                 keyboard = change_treker_inline_keyboard()
@@ -2052,11 +2052,10 @@ def mantling_emei_equipment(message):
                     if id:
                         #Якщо є то виводимо в бот інформацію про цей обєкт з EMEI і завершуємо процедуру монтажу
                         print(info_wialon._get_info_from_telegram(id))
-                        bot.send_message(message.chat.id,
-                                         f"```\n{json.dumps(info_wialon._get_info_from_telegram(id),
-                                                            indent=4, ensure_ascii=False)}\n"
-                                         f"```Я не можу провести зробити монтаж, бо такий IMEI уже є в Wialon",
-                                         parse_mode="MarkdownV2")
+
+                        bot.send_message(message.chat.id,f"```\n{json.dumps(info_wialon._get_info_from_telegram(id), indent=4, ensure_ascii=False)}\n```\nЯ не можу провести монтаж, бо такий IMEI уже є в Wialon",parse_mode="MarkdownV2")
+
+
                         return
 
                 except Exception as e:
@@ -2074,7 +2073,7 @@ def mantling_emei_equipment(message):
                                     formatted_text,
                                     parse_mode = "MarkdownV2",
                                     reply_markup=keyboard
-                                 )
+        )
 
             if len(result) == 0:
                 bot.send_message(message.chat.id, "Я нічого не знайшов. Спробуйте ще раз")

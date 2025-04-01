@@ -11,3 +11,5 @@ WialonSolution.py
 __pycache__/
 config/
 experiment
+venv/
+
