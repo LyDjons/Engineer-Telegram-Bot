@@ -35,7 +35,6 @@ user_id_list = [5015926969,
                 405850921, #LyDjons
                 353397138,
                 1799853664 #guz
-
                 ]
 
 # Состояния кнопок (начальные значения)
@@ -1649,6 +1648,7 @@ def handle_callback(call):
             info_wialon = WialonManager(WIALON_URL, WIALON_TOKEN)
             protocol_id,protocol_pass = info_wialon._get_id_and_pass_protocol_for_user_mask(json2["Серія"])
 
+
             protocol_name = info_wialon._device_type(protocol_id)
 
             print(f"protocol id = {protocol_id}\n"
@@ -1670,7 +1670,7 @@ def handle_callback(call):
 
             # добавляємо пароль протоколу
             info_wialon._update_protocol_password(json1['id'], '\"\"')
-            info_wialon._update_protocol_password(json1['id'], protocol_pass)
+            info_wialon._update_protocol_password(json1['id'],password=protocol_pass)
 
 
             info_wialon._create_udate_voltage_sensors(json1["id"])

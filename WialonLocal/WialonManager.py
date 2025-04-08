@@ -583,7 +583,7 @@ class WialonManager:
         query = (
             'svc=unit/update_access_password&params={'
             f'"itemId":{id_obj},'
-            f'"accessPassword":{password}'
+            f'"accessPassword":"{password}"'
             '}'
         )
         response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
