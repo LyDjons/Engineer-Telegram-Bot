@@ -1050,6 +1050,17 @@ class WialonManager:
         if claster == "АП": creator_id = "249"
         return creator_id
 
+    def _get_token_list(self,user_id):
+
+        query = (
+            'svc=token/list&params={'
+            f'"userId":{user_id}'
+            '}'
+        )
+
+        response = requests.get(f"{self.__base_url}/wialon/ajax.html?{query}&sid={self.__sid}")
+        data = response.json()
+        return data
 
 
 
