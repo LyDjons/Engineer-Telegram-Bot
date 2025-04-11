@@ -814,6 +814,12 @@ def callback_mantling(call):
     if call.data == "update_mark":
         if call.message.chat.id in history_msg_mantling : delete_history_msg(call.message.chat.id)
 
+        try:
+            print_button_markup(call)
+        except Exception as e:
+            print(f"Щось наїбнулось: {e}")
+
+
         if call.from_user.id not in mantling_state:
             return  # якщо такого користувача немає
 
@@ -1310,6 +1316,34 @@ def get_button_text_by_callback(callback_data, keyboard_data):
                 return button['text']  # Возвращаем текст кнопки
     return None  # Если кнопка не найдена
 
+def print_button_markup(call):
+
+    #Отримуємо текст кнопок
+    markup = call.message.reply_markup
+    if markup and markup.keyboard:
+        markup_data = {}
+        for index_row, row in enumerate(markup.keyboard):
+            if len(row) >= 2:
+                key = row[0].text
+                value = row[1].text
+                markup_data[key] = value
+            if index_row == 4:
+                break
+
+        # Теперь можно удобно обращаться:
+        text_mark = markup_data.get("Марка")
+        text_model = markup_data.get("Модель")
+        text_number = markup_data.get("Номер")
+        text_driver = markup_data.get("Водій")
+        text_fuel_card = markup_data.get("Паливна картка")
+
+        print(markup_data)  # или делай что нужно с данными
+
+    else:
+        print("Кнопки не найдены.")
+
+
+
 def find_emei_to_change_treker(message,call):
     put_in_message_list(message.chat.id, message.id)
     emei = message.text  # Отримуємо введене значення
@@ -1574,7 +1608,6 @@ def handle_callback(call):
         )
 
 
-
         try:
             session = WialonManager(WIALON_URL, WIALON_TOKEN)
             #print(session._get_info())
@@ -1606,7 +1639,6 @@ def handle_callback(call):
             session._delete_obj_from_groups(id, "", "історія")
             print(f"Успішно видалений: {my_json.get('items')[0].get('nm')} ")
             print(my_json.get("items")[0])
-
 
 
         except telebot.apihelper.ApiTelegramException as e:
