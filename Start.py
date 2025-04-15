@@ -8,7 +8,7 @@ from telebot.asyncio_helper import delete_message
 
 from fileeditor.FileManager import FileManager
 from config.config import TELEGRAM_TOKEN, WIALON_URL, ENGINEER_CHAT_ID, THREAD_ORDER_ID, THREAD_ID_CHIMC, THREAD_ID_AP, \
-    THREAD_ID_AK, THREAD_ID_BA, THREAD_ID_SA, setting_user_cluster
+    THREAD_ID_AK, THREAD_ID_BA, THREAD_ID_SA, setting_user_cluster, THREAD_ID_IMC
 from config.config import WIALON_TOKEN
 from telebot import types
 from WialonLocal.WialonManager import WialonManager
@@ -1013,6 +1013,8 @@ def callback_mantling(call):
         obj_new_name += f" ({json2['Номер']})"
         if json2['Водитель'] != '-': obj_new_name += f" {json2['Водитель']}"
 
+
+
         success__description_logs = {
             'success': [],
             'errors': []
@@ -1022,6 +1024,10 @@ def callback_mantling(call):
         protocol_name = ""
         sim=""
         obj_new_name = obj_new_name[:50] if len(obj_new_name) > 50 else obj_new_name
+
+        #Прибираємо зайві пробіли
+        obj_new_name = ' '.join(obj_new_name.strip().split())
+
 
         temp_obj = 0
 
@@ -1197,9 +1203,15 @@ def callback_mantling(call):
         if len(success__description_logs['errors']) == 0:
             error_description = "\n"
 
+        #видалення подвійних та зайвих пробілів
+        cleaned = ' '.join(
+            f"{json2.get('Марка', '')} {json2.get('Модель', '')} ({json2.get('Номер', '')}) {json2.get('Водитель', '')}"
+            .strip().split()
+        )
+
         formatted_message = (
             f"operation    : `{json2['Операція']}`\n"
-            f"Назва          : `{json2['Марка']} {json2['Модель']} ({json2['Номер']}) {json2['Водитель']}`\n"
+            f"Назва          : `{cleaned}`\n"
             f"Протокол   : `{protocol_name}`\n"
             f"EMEI            : `{json1['ИМЕИ']}`\n"
             f"shortEMEI    : `{json1['ИМЕИ'][-5:]}`\n"
@@ -1214,6 +1226,7 @@ def callback_mantling(call):
 
         #видаляємо повідомлення і в чат пишем результат монтажу
         bot.delete_message(call.message.chat.id, old_message_id)
+
         if json2['Кластер'] == "ЧІМК":
             bot.send_message(call.message.chat.id, formatted_message,
                              parse_mode="MarkdownV2",message_thread_id=THREAD_ID_CHIMC)
@@ -1574,6 +1587,7 @@ def handle_callback(call):
 
             if not my_json['items']:
                 print("не найдено EMEI")
+
                 return
             id = my_json.get("items")[0].get("id")
             id_hv = my_json.get("items")[0].get('hw')
@@ -1598,11 +1612,28 @@ def handle_callback(call):
             print(f"Ошибка: {e}")
 
         #видаляємо повідомлення з заявкою демонтажу та відправляємо звіт
-        #bot.delete_message(call.message.chat.id, old_message_id)
+        bot.delete_message(call.message.chat.id, old_message_id)
 
-
-
-        #bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2", message_thread_id=THREAD_ORDER_ID)
+        #вирішуєм в який чат будем скидувать звіт
+        cluster = get_cluster_for_user_id(call.from_user.id)
+        if cluster == "ЧІМК":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_CHIMC)
+        elif cluster == "СА":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_SA)
+        elif cluster == "БА":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_BA)
+        elif cluster == "АК":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_AK)
+        elif cluster == "АП":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_AP)
+        else:
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_IMC)
 
 
     elif call.data == "decline_dismantle":
@@ -1716,9 +1747,29 @@ def handle_callback(call):
             f"Ініціатор            :  `{json2['Ініціатор']}`"
         )
 
+        #видаляємо повідомлення
         bot.delete_message(call.message.chat.id, old_message_id)
-        bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
-                         message_thread_id=THREAD_ORDER_ID)
+
+        # вирішуєм в який чат будем скидувать звіт
+        cluster = get_cluster_for_user_id(call.from_user.id)
+        if cluster == "ЧІМК":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_CHIMC)
+        elif cluster == "СА":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_SA)
+        elif cluster == "БА":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_BA)
+        elif cluster == "АК":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_AK)
+        elif cluster == "АП":
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_AP)
+        else:
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
+                             message_thread_id=THREAD_ID_IMC)
 
 
     elif call.data == "decline_change_treker":
