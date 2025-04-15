@@ -7,7 +7,8 @@ from telebot.apihelper import session
 from telebot.asyncio_helper import delete_message
 
 from fileeditor.FileManager import FileManager
-from config.config import TELEGRAM_TOKEN, WIALON_URL, ENGINEER_CHAT_ID, THREAD_ID
+from config.config import TELEGRAM_TOKEN, WIALON_URL, ENGINEER_CHAT_ID, THREAD_ORDER_ID, THREAD_ID_CHIMC, THREAD_ID_AP, \
+    THREAD_ID_AK, THREAD_ID_BA, THREAD_ID_SA, setting_user_cluster
 from config.config import WIALON_TOKEN
 from telebot import types
 from WialonLocal.WialonManager import WialonManager
@@ -25,15 +26,16 @@ user_state = {}
 history_msg_mantling = {}
 
 
-user_id_list = [5015926969,
-                947585131,
-                775847107,
-                7746732602,
+user_id_list = [5015926969, #Реутський
+                947585131, #цирлін
+                281170745, #Вдовиченко
+                775847107, #Косяк
+                7746732602, #макаренко
                 7436821858, #отрошко
-                5019308388,
-                811377535,
-                405850921, #LyDjons
-                353397138,
+                5019308388, #Гнипа
+                811377535, #Гуранський
+                405850921, #Харченко
+                353397138, #LyDjons
                 1799853664 #guz
                 ]
 
@@ -204,7 +206,7 @@ def change_treker_inline_keyboard():
 
     # Створення кнопок
     btn1 = types.InlineKeyboardButton("Знайти EMEI для заміни 🔎", callback_data="find_emei_change_treker")
-    btn2 = types.InlineKeyboardButton("Очистить 🧹", callback_data="clear_change_treker")
+    btn2 = types.InlineKeyboardButton("Почистити 🧹", callback_data="clear_change_treker")
     btn3 = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_change_treker")
     cancel_change_treker = types.InlineKeyboardButton("Відмінити ❌", callback_data="cancel_change_treker")
 
@@ -227,6 +229,7 @@ def mantle_stage_2_inline_keyboard(text_mark='-',text_model='-',text_number='-',
     btn5 = types.InlineKeyboardButton("Паливна карта", callback_data="None")
 
     confirm = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_mantling2")
+    clear = types.InlineKeyboardButton("Почистити 🧹", callback_data="clear_mantling2")
     cancel_mantle = types.InlineKeyboardButton("Назад👈 ", callback_data="back_mantling")
     button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="cancel_mantling")
 
@@ -236,20 +239,14 @@ def mantle_stage_2_inline_keyboard(text_mark='-',text_model='-',text_number='-',
     change_driver = types.InlineKeyboardButton(f"{text_driver}", callback_data="change_driver")
     change_fuel_card = types.InlineKeyboardButton(f"{text_fuel_card}", callback_data="change_fuel_cart")
 
-    clear_mark = types.InlineKeyboardButton(f"🔄", callback_data="update_mark")
-    clear_model = types.InlineKeyboardButton(f"🔄", callback_data="update_model")
-    clear_number = types.InlineKeyboardButton(f"🔄", callback_data="update_number")
-    clear_driver = types.InlineKeyboardButton(f"🔄", callback_data="update_driver")
-    clear_fuel_card = types.InlineKeyboardButton(f"🔄", callback_data="update_fuel_card")
-
-
 
     # Добавление кнопок в клавиатуру
-    keyboard.add(btn1,change_mark,clear_mark)
-    keyboard.add(btn2,change_model,clear_model)
-    keyboard.add(btn3,change_number,clear_number)
-    keyboard.add(btn4,change_driver,clear_driver)
-    keyboard.add(btn5, change_fuel_card, clear_fuel_card)
+    keyboard.add(btn1,change_mark)
+    keyboard.add(btn2,change_model)
+    keyboard.add(btn3,change_number)
+    keyboard.add(btn4,change_driver)
+    keyboard.add(btn5, change_fuel_card)
+    keyboard.add(clear)
     keyboard.add(confirm)
     keyboard.add(cancel_mantle)
     keyboard.add(button_no)
@@ -329,6 +326,18 @@ def test_function(message):
     bot.reply_to(message, f"User ID: {user_id}\nUsername: @{username}")
     print(f"User ID: {user_id}\nUsername: @{username}")
     return "A-a-a-a-a-ahhH!!!"
+
+def get_cluster_for_user_id(user_id):
+    """
+    За user_id повертаэмо кластер, до якого належить користувач
+    :param user_id: id користувача з telegram
+    :return:
+    """
+
+    if user_id in setting_user_cluster:
+        return setting_user_cluster[user_id]
+    else:
+        return None
 
 def put_in_message_list(ures_id,message_id):
     """
@@ -496,7 +505,7 @@ def add_to_wialon_group(obj_id,json_info,session):
                                                             "back_mantling","change_mark","change_model",
                                                             "change_number","change_driver","update_mark","update_model",
                                                             "update_number","update_driver","confirm_mantling2",
-                                                            "change_fuel_cart","update_fuel_card",
+                                                            "change_fuel_cart","clear_mantling2",
                                                             "cancel_change_treker","clear_change_treker",
                                                             "find_emei_change_treker","cancel_change_treker",
                                                             "confirm_change_treker",
@@ -517,20 +526,7 @@ def callback_mantling(call):
     fuel_card_text = get_button_text_by_callback('change_fuel_cart', keyboard_data)
 
     global message_mantle
-    #print(f"callback= {call.data}")
-    """print(f"Дані кнопок :\n "
-                            f"{claster_text}\n"
-                            f"{ownership_text}\n"
-                            f"{group_text}\n"
-                            f"{subgroup_text}"
-                            )"""
-    """print(f"Дані кнопок :\n "
-                                f"mark={mark_text}\n"
-                                f"model={model_text}\n"
-                                f"number={number_text}\n"
-                                f"driver={driver_text}\n
-                                f"driver={fuel_card_text}"
-                                )"""
+
     #якщо натиснута кнопка вибору кластеру
     if call.data == "change_claster":
 
@@ -629,7 +625,6 @@ def callback_mantling(call):
             #print(f"Нема чого оновлювати: {e}")
             pass
 
-
     if call.data == "clear_change_treker":
         #Ця штука робить чистку другого json-а
 
@@ -665,7 +660,6 @@ def callback_mantling(call):
             print(f"Я все почистив, але нема що оновлювать")
 
         if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
-
 
     if call.data == "confirm_mantling":
 
@@ -719,6 +713,8 @@ def callback_mantling(call):
         )
 
     if call.data == "back_mantling2":
+
+        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
 
         json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
         json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
@@ -780,139 +776,50 @@ def callback_mantling(call):
         msg = bot.send_message(call.message.chat.id, "Введіть марку транспорту:")
         put_in_message_list(call.message.chat.id,msg.message_id)
 
+
         bot.register_next_step_handler(call.message,
-                                       lambda message: user_input_text_mantling2(message, "mark"))
+                                       lambda message: update_button_mantling2_menu(message, call, name_button="Марка"))
 
     if call.data == "change_model":
         msg = bot.send_message(call.message.chat.id, "Введіть модель транспорту:")
         put_in_message_list(call.message.chat.id, msg.message_id)
 
         bot.register_next_step_handler(call.message,
-                                       lambda message: user_input_text_mantling2(message, "model"))
+                                       lambda message: update_button_mantling2_menu(message, call, name_button="Модель"))
 
     if call.data == "change_number":
         msg = bot.send_message(call.message.chat.id, "Введіть держ. транспорту:")
         put_in_message_list(call.message.chat.id,msg.message_id)
 
         bot.register_next_step_handler(call.message,
-                                       lambda message: user_input_text_mantling2(message, "number"))
+                                       lambda message: update_button_mantling2_menu(message, call,
+                                                                                    name_button="Номер"))
 
     if call.data == "change_driver":
         msg = bot.send_message(call.message.chat.id, "Введіть водія транспорту:")
         put_in_message_list(call.message.chat.id, msg.message_id)
 
         bot.register_next_step_handler(call.message,
-                                       lambda message: user_input_text_mantling2(message, "driver"))
+                                       lambda message: update_button_mantling2_menu(message, call,
+                                                                                    name_button="Водій"))
 
     if call.data == "change_fuel_cart":
         msg = bot.send_message(call.message.chat.id, "Введіть # паливної карти:")
         put_in_message_list(call.message.chat.id, msg.message_id)
 
         bot.register_next_step_handler(call.message,
-                                       lambda message: user_input_text_mantling2(message, "fuel_card"))
+                                       lambda message: update_button_mantling2_menu(message, call,
+                                                                                    name_button="Паливна карта"))
 
-    if call.data == "update_mark":
-        if call.message.chat.id in history_msg_mantling : delete_history_msg(call.message.chat.id)
-
+    if call.data == "clear_mantling2":
         try:
-            print_button_markup(call)
-        except Exception as e:
-            print(f"Щось наїбнулось: {e}")
-
-
-        if call.from_user.id not in mantling_state:
-            return  # якщо такого користувача немає
-
-        try:
-            keyboard = mantle_stage_2_inline_keyboard(text_mark=mantling_state[call.from_user.id]["mark"],
-                                                      text_model=model_text,
-                                                      text_number=number_text,
-                                                      text_driver=driver_text,
-                                                      text_fuel_card=fuel_card_text)
-            mantling_state[call.from_user.id]["mark"] = "-"
-
-            bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,
-                                          reply_markup=keyboard)
-        except Exception as e:
-            # print(f"Нема чого оновлювати: {e}")
-            pass
-        message_mantle = "-"
-
-    if call.data == "update_model":
-        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
-        if call.from_user.id not in mantling_state:
-            return  # якщо такого користувача немає
-        try:
-            keyboard = mantle_stage_2_inline_keyboard( text_mark=mark_text,
-                                                       text_model=mantling_state[call.from_user.id]["model"],
-                                                    text_number=number_text,
-                                                       text_driver=driver_text,
-                                                       text_fuel_card=fuel_card_text)
-            mantling_state[call.from_user.id]["model"] = "-"
-            bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,
-                                        reply_markup=keyboard)
-        except Exception as e:
-            #print(f"Нема чого оновлювати: {e}")
-            pass
-        message_mantle = "-"
-
-    if call.data == "update_number":
-        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
-        if call.from_user.id not in mantling_state:
-            return  # якщо такого користувача немає
-        try:
-            keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
-                                                      text_model=model_text,
-                                                      text_number=mantling_state[call.from_user.id]["number"].upper(),
-                                                      text_driver=driver_text,
-                                                      text_fuel_card=fuel_card_text)
-            mantling_state[call.from_user.id]["number"] = "-"
-            bot.edit_message_reply_markup(
-                    chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=keyboard
-            )
-        except Exception as e:
-            # print(f"Нема чого оновлювати: {e}")
-            pass
-        message_mantle = "-"
-
-    if call.data == "update_driver":
-        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
-        if call.from_user.id not in mantling_state:
-            return  # якщо такого користувача немає
-        try:
-            keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
-                                                      text_model=model_text,
-                                                      text_number=number_text,
-                                                      text_driver=mantling_state[call.from_user.id]["driver"],
-                                                      text_fuel_card=fuel_card_text)
-            mantling_state[call.from_user.id]["driver"] = "-"
+            keyboard = mantle_stage_2_inline_keyboard()
 
             bot.edit_message_reply_markup(
                 chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=keyboard)
         except Exception as e:
             # print(f"Нема чого оновлювати: {e}")
             pass
-        message_mantle = "-"
-
-    if call.data == "update_fuel_card":
-        if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
-        if call.from_user.id not in mantling_state:
-            return  # якщо такого користувача немає
-        try:
-            keyboard = mantle_stage_2_inline_keyboard(text_mark=mark_text,
-                                                      text_model=model_text,
-                                                      text_number=number_text,
-                                                      text_driver=driver_text,
-                                                      text_fuel_card=mantling_state[call.from_user.id]["fuel_card"])
-            mantling_state[call.from_user.id]["fuel_card"] = "-"
-
-            bot.edit_message_reply_markup(
-                chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=keyboard)
-        except Exception as e:
-            # print(f"Нема чого оновлювати: {e}")
-            pass
-        message_mantle = "-"
-
 
     if call.data == "cancel_mantling":
         # видаляємо повідомлення
@@ -925,7 +832,6 @@ def callback_mantling(call):
         # видаляємо повідомлення
         bot.delete_message(call.message.chat.id, call.message.message_id)
         message_mantle = "-"
-
 
     if call.data == "confirm_mantling2":
 
@@ -960,6 +866,7 @@ def callback_mantling(call):
             print("error")
             pass
 
+
         # в повідомленні 2 json. Витягуємо їх із call.message.text та перетворюємо в json для подальшого обробітку
         json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
         json1 = "{" + json_match[0].strip().replace("\n", "").replace("    ", "") + "}"
@@ -968,10 +875,10 @@ def callback_mantling(call):
         json2 = json.loads(json2)
 
         json2['Марка'] = mark_text
-        json2['Модель'] = model_text if model_text != "-" else "-"
+        json2['Модель'] = model_text if model_text != "-" else ""
         json2['Номер'] = number_text
-        json2['Водитель'] = driver_text if driver_text!= "-" else "-"
-        json2['Паливна карта'] = fuel_card_text if fuel_card_text != "-" else "-"
+        json2['Водитель'] = driver_text if driver_text!= "-" else ""
+        json2['Паливна карта'] = fuel_card_text if fuel_card_text != "-" else ""
         json2['ініціатор'] = call.from_user.username
 
         formatted_text = f"```\n{json.dumps(json1, indent=4, ensure_ascii=False)}\n```\n```\n{json.dumps(json2, indent=4, ensure_ascii=False)}\n```"
@@ -996,13 +903,14 @@ def callback_mantling(call):
     if call.data == "confirm_mantling3":
 
         message_text = call.message.text
+
         try:
             bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```",
                              parse_mode="MarkdownV2",
                              reply_markup=ask_approve_confirmation("approve_mantle"),
-                             message_thread_id=THREAD_ID)
+                             message_thread_id=THREAD_ORDER_ID)
         except Exception as e:
-            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ID}")
+            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ORDER_ID}")
             return
 
         # Удаляем сообщение в чате бота после отправки
@@ -1032,9 +940,9 @@ def callback_mantling(call):
             bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```",
                              parse_mode="MarkdownV2",
                              reply_markup=ask_approve_confirmation("approve_change_treker"),
-                             message_thread_id=THREAD_ID)
+                             message_thread_id=THREAD_ORDER_ID)
         except Exception as e:
-            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ID}")
+            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ORDER_ID}")
             return
 
         # Удаляем сообщение в чате бота после отправки
@@ -1057,7 +965,7 @@ def callback_mantling(call):
                 return
         except telebot.apihelper.ApiTelegramException as e:
             print(f"Ошибка: {e}")
-            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
+            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ORDER_ID)
             return
 
         # Зберігаємо  ідентифікатор старого повідомлення
@@ -1128,7 +1036,7 @@ def callback_mantling(call):
 
             if len(temp_obj['items']) > 1:
                 bot.send_message(call.message.chat.id, f"Вибачте, я знайшов декілька об'єктів з таким держ. номером\n"
-                                                       f"Видаліть зайвий і спробуйте знову", message_thread_id=THREAD_ID)
+                                                       f"Видаліть зайвий і спробуйте знову", message_thread_id=THREAD_ORDER_ID)
                 return
 
             #Якщо знайдено один об'єкт або не знайдено жодного
@@ -1291,7 +1199,7 @@ def callback_mantling(call):
 
         formatted_message = (
             f"operation    : `{json2['Операція']}`\n"
-            f"Назва          : `{json2['Марка']} {json2['Модель']} {json2['Номер']} {json2['Водитель']}`\n"
+            f"Назва          : `{json2['Марка']} {json2['Модель']} ({json2['Номер']}) {json2['Водитель']}`\n"
             f"Протокол   : `{protocol_name}`\n"
             f"EMEI            : `{json1['ИМЕИ']}`\n"
             f"shortEMEI    : `{json1['ИМЕИ'][-5:]}`\n"
@@ -1305,8 +1213,25 @@ def callback_mantling(call):
         )
 
         #видаляємо повідомлення і в чат пишем результат монтажу
-        bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2", message_thread_id=THREAD_ID)
         bot.delete_message(call.message.chat.id, old_message_id)
+        if json2['Кластер'] == "ЧІМК":
+            bot.send_message(call.message.chat.id, formatted_message,
+                             parse_mode="MarkdownV2",message_thread_id=THREAD_ID_CHIMC)
+        elif json2['Кластер'] == "АП":
+            bot.send_message(call.message.chat.id, formatted_message,
+                             parse_mode="MarkdownV2",message_thread_id=THREAD_ID_AP)
+        elif json2['Кластер'] == "АК":
+            bot.send_message(call.message.chat.id, formatted_message,
+                             parse_mode="MarkdownV2",message_thread_id=THREAD_ID_AK)
+        elif json2['Кластер'] == "БА":
+            bot.send_message(call.message.chat.id, formatted_message,
+                             parse_mode="MarkdownV2",message_thread_id=THREAD_ID_BA)
+        elif json2['Кластер'] == "СА":
+            bot.send_message(call.message.chat.id, formatted_message,
+                             parse_mode="MarkdownV2",message_thread_id=THREAD_ID_SA)
+        else:
+            bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2", message_thread_id=THREAD_ORDER_ID)
+
 
 # Функция для поиска текста кнопки по значению callback_data
 def get_button_text_by_callback(callback_data, keyboard_data):
@@ -1316,9 +1241,21 @@ def get_button_text_by_callback(callback_data, keyboard_data):
                 return button['text']  # Возвращаем текст кнопки
     return None  # Если кнопка не найдена
 
-def print_button_markup(call):
+def update_button_mantling2_menu(message, call, name_button):
 
+    """
+    Функція робить апдейт кнопок.
+    :param message: передаємо месседж що вводить користувач
+    :param call: келбtк повідомлення
+    :param name_button: Ім'я кнопки що вводимо, потым використаэмо як ключ
+    :return:
+    """
+
+    put_in_message_list(call.message.chat.id, message.message_id)
+
+    if call.message.chat.id in history_msg_mantling: delete_history_msg(call.message.chat.id)
     #Отримуємо текст кнопок
+
     markup = call.message.reply_markup
     if markup and markup.keyboard:
         markup_data = {}
@@ -1330,17 +1267,31 @@ def print_button_markup(call):
             if index_row == 4:
                 break
 
+        markup_data[name_button] = message.text
+
         # Теперь можно удобно обращаться:
         text_mark = markup_data.get("Марка")
         text_model = markup_data.get("Модель")
         text_number = markup_data.get("Номер")
         text_driver = markup_data.get("Водій")
-        text_fuel_card = markup_data.get("Паливна картка")
+        text_fuel_card = markup_data.get("Паливна карта")
 
-        print(markup_data)  # или делай что нужно с данными
+        try:
+            keyboard = mantle_stage_2_inline_keyboard(text_mark=text_mark,
+                                                      text_model=text_model,
+                                                      text_number=text_number,
+                                                      text_driver=text_driver,
+                                                      text_fuel_card=text_fuel_card)
+
+
+            bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,
+                                          reply_markup=keyboard)
+        except Exception as e:
+            print(f"Нема чого оновлювати: {e}")
+            pass
 
     else:
-        print("Кнопки не найдены.")
+        print("Кнопки знайдені.")
 
 
 
@@ -1529,15 +1480,16 @@ def handle_callback(call):
         user_state.pop(user_id, None)
         message_text = call.message.text
 
+        #відсилаємо заявку демонтажу на погодження
         try:
-            bot.send_message(ENGINEER_CHAT_ID, f"```{message_text}```" ,
+            bot.send_message(ENGINEER_CHAT_ID, f"```{message_text}```",
                              parse_mode="MarkdownV2",
                              reply_markup=ask_approve_confirmation("approve_dismantle"),
-                             message_thread_id=THREAD_ID)
+                             message_thread_id=THREAD_ORDER_ID)
 
 
         except Exception as e:
-            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ID}")
+            bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ORDER_ID}")
             return
 
         # Удаляем сообщение в чате бота после отправки
@@ -1550,8 +1502,9 @@ def handle_callback(call):
     elif call.data == "approve_dismantle":
 
         print(f"User : {call.from_user.id} name = {call.from_user.first_name} "
-              f"push '{call.data}' "
-              f"Chat ID '{call.message.chat.id}' "
+              f"cluster: {get_cluster_for_user_id(call.from_user.id)} "
+              f"push {call.data} "
+              f"Chat ID {call.message.chat.id} "
               f"message_thread_id = {getattr(call.message, 'message_thread_id', 'No thread ID')}")
 
         # Коли в чат падає заявка, то тільки адміністратор або власник може натиснути "Погодити"
@@ -1562,7 +1515,7 @@ def handle_callback(call):
                 return
         except telebot.apihelper.ApiTelegramException as e:
             print(f"Ошибка: {e}")
-            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
+            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ORDER_ID)
             return
 
         # Зберігаємо  ідентифікатор старого повідомлення
@@ -1644,8 +1597,13 @@ def handle_callback(call):
         except telebot.apihelper.ApiTelegramException as e:
             print(f"Ошибка: {e}")
 
-        bot.send_message(call.message.chat.id, formatted_message,parse_mode="MarkdownV2", message_thread_id=THREAD_ID)
-        bot.delete_message(call.message.chat.id, old_message_id)
+        #видаляємо повідомлення з заявкою демонтажу та відправляємо звіт
+        #bot.delete_message(call.message.chat.id, old_message_id)
+
+
+
+        #bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2", message_thread_id=THREAD_ORDER_ID)
+
 
     elif call.data == "decline_dismantle":
         bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -1659,7 +1617,7 @@ def handle_callback(call):
                 return
         except telebot.apihelper.ApiTelegramException as e:
             print(f"Ошибка: {e}")
-            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
+            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ORDER_ID)
             return
 
         # отримуємо першу і другу форму
@@ -1710,7 +1668,7 @@ def handle_callback(call):
 
         except Exception as e:
             print(f"Помилка заміни трекера: {e}")
-            bot.send_message(call.message.chat.id, f"Помилка заміни трекера: {e}", message_thread_id=THREAD_ID)
+            bot.send_message(call.message.chat.id, f"Помилка заміни трекера: {e}", message_thread_id=THREAD_ORDER_ID)
 
         # Получаем время отправки сообщения
         message_time = call.message.date
@@ -1760,7 +1718,7 @@ def handle_callback(call):
 
         bot.delete_message(call.message.chat.id, old_message_id)
         bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
-                         message_thread_id=THREAD_ID)
+                         message_thread_id=THREAD_ORDER_ID)
 
 
     elif call.data == "decline_change_treker":
@@ -1773,7 +1731,7 @@ def handle_callback(call):
                 return
         except telebot.apihelper.ApiTelegramException as e:
             print(f"Ошибка: {e}")
-            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ID)
+            bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ORDER_ID)
             return
 
         bot.delete_message(call.message.chat.id, call.message.message_id)
