@@ -36,7 +36,8 @@ user_id_list = [5015926969, #Реутський
                 811377535, #Гуранський
                 405850921, #Харченко
                 353397138, #LyDjons
-                1799853664 #guz
+                1799853664, #guz
+                6400240177 #IMCvasyuk
                 ]
 
 # Состояния кнопок (начальные значения)
@@ -267,14 +268,14 @@ def mantle_stage_3_inline_keyboard():
 
     return keyboard
 
-def ask_approve_confirmation(specificator:str):
+def ask_approve_confirmation(specificator:str, creator_id = "null"):
     # Створення інлайн-клавіатури
     markup = types.InlineKeyboardMarkup()
     button_yes = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_dismantle") #бот
-    button_yes2 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_dismantle") #чат
+    button_yes2 = types.InlineKeyboardButton("Погодити ✅", callback_data=f"approve_dismantle|{creator_id}") #чат
     button_yes3 = types.InlineKeyboardButton("Підтвердити ✅", callback_data="approve_mantle")  # бот
     button_yes4 = types.InlineKeyboardButton("Підтвердити ✅", callback_data="confirm_change_treker")  # бот
-    button_yes5 = types.InlineKeyboardButton("Погодити ✅", callback_data="approve_change_treker")  # бот
+    button_yes5 = types.InlineKeyboardButton("Погодити ✅", callback_data=f"approve_change_treker|{creator_id}")  # чат
 
     button_no = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline_dismantle")
     button_no2 = types.InlineKeyboardButton("Відхилити ❌", callback_data="decline_change_treker")
@@ -319,6 +320,18 @@ def ask_confirmation(message, count:int, spec_message: str, specificator="simple
     msg = bot.send_message(message.chat.id, f"Знайдено в системі {count} об'єктів. {spec_message}\n Вивести результат?", reply_markup=markup)
     put_in_message_list(message.chat.id, msg.message_id)
 
+def serialize(obj):
+    if isinstance(obj, list):
+        return [serialize(item) for item in obj]
+    elif hasattr(obj, 'to_dict'):
+        return serialize(obj.to_dict())
+    elif hasattr(obj, '__dict__'):
+        return serialize(vars(obj))
+    elif isinstance(obj, dict):
+        return {key: serialize(value) for key, value in obj.items()}
+    else:
+        return obj
+
 def test_function(message):
     user_id = message.from_user.id  # Получаем ID пользователя
     username = message.from_user.username  # Получаем Username пользователя
@@ -333,7 +346,7 @@ def get_cluster_for_user_id(user_id):
     :param user_id: id користувача з telegram
     :return:
     """
-
+    user_id = int(user_id)
     if user_id in setting_user_cluster:
         return setting_user_cluster[user_id]
     else:
@@ -500,7 +513,7 @@ def add_to_wialon_group(obj_id,json_info,session):
 
     return result
 
-@bot.callback_query_handler(func=lambda call: call.data in ["change_claster","change_ownership","confirm_mantling",
+@bot.callback_query_handler(func=lambda call: call.data.split('|')[0] in ["change_claster","change_ownership","confirm_mantling",
                                                             "change_group","change_subgroup","cancel_mantling",
                                                             "back_mantling","change_mark","change_model",
                                                             "change_number","change_driver","update_mark","update_model",
@@ -939,7 +952,7 @@ def callback_mantling(call):
         try:
             bot.send_message(ENGINEER_CHAT_ID, f"```\n{message_text}\n```",
                              parse_mode="MarkdownV2",
-                             reply_markup=ask_approve_confirmation("approve_change_treker"),
+                             reply_markup=ask_approve_confirmation("approve_change_treker",call.from_user.id),
                              message_thread_id=THREAD_ORDER_ID)
         except Exception as e:
             bot.send_message(call.message.chat.id, f"Не знайдено чат з ID={ENGINEER_CHAT_ID} та THREAD_ID={THREAD_ORDER_ID}")
@@ -1417,7 +1430,7 @@ def start(message):
     if chat_type == "private":
         bot.send_message(message.chat.id, "Доброго інженерного дня!", reply_markup=main_menu())
 
-@bot.callback_query_handler(func=lambda call: call.data in ["yes", "no","confirm_dismantle","cancel","yes_find"
+@bot.callback_query_handler(func=lambda call: call.data.split('|')[0] in ["yes", "no","confirm_dismantle","cancel","yes_find"
                                                             ,"show_dismantling","show_mantling","show_change_treker"
                                                             ,"approve_dismantle","decline_dismantle",
                                                             "decline_change_treker","approve_change_treker"])
@@ -1488,7 +1501,7 @@ def handle_callback(call):
         return
 
     #бот
-    elif call.data == "confirm_dismantle":
+    elif call.data.split('|')[0] == "confirm_dismantle":
 
         user_state.pop(user_id, None)
         message_text = call.message.text
@@ -1497,7 +1510,7 @@ def handle_callback(call):
         try:
             bot.send_message(ENGINEER_CHAT_ID, f"```{message_text}```",
                              parse_mode="MarkdownV2",
-                             reply_markup=ask_approve_confirmation("approve_dismantle"),
+                             reply_markup=ask_approve_confirmation("approve_dismantle",call.from_user.id),
                              message_thread_id=THREAD_ORDER_ID)
 
 
@@ -1512,13 +1525,23 @@ def handle_callback(call):
                          parse_mode="MarkdownV2")
 
     #чат
-    elif call.data == "approve_dismantle":
+    elif call.data.split('|')[0] == "approve_dismantle":
 
         print(f"User : {call.from_user.id} name = {call.from_user.first_name} "
               f"cluster: {get_cluster_for_user_id(call.from_user.id)} "
-              f"push {call.data} "
+              f"push: {call.data} "
               f"Chat ID {call.message.chat.id} "
-              f"message_thread_id = {getattr(call.message, 'message_thread_id', 'No thread ID')}")
+              f"message_thread_id = {getattr(call.message, 'message_thread_id', 'No thread ID')}"
+              f"creatorID: {call.data.split('|')[1]}"
+              f"creator_cluster: {get_cluster_for_user_id(call.data.split('|')[1])}"
+              )
+
+        #call_data = serialize(call) розпарсить call
+        # Записуємо у файл
+        """with open('WialonLocal//call_output.txt', 'w', encoding='utf-8') as f:
+            f.write(json.dumps(call_data, indent=4, ensure_ascii=False))"""
+        creator_id = call.data.split('|')[1]
+
 
         # Коли в чат падає заявка, то тільки адміністратор або власник може натиснути "Погодити"
         try:
@@ -1573,7 +1596,6 @@ def handle_callback(call):
             f"Ініціатор            :  `{message_dict.get('creator')}`"
         )
 
-
         try:
             session = WialonManager(WIALON_URL, WIALON_TOKEN)
             #print(session._get_info())
@@ -1615,7 +1637,7 @@ def handle_callback(call):
         bot.delete_message(call.message.chat.id, old_message_id)
 
         #вирішуєм в який чат будем скидувать звіт
-        cluster = get_cluster_for_user_id(call.from_user.id)
+        cluster = get_cluster_for_user_id(creator_id)
         if cluster == "ЧІМК":
             bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
                              message_thread_id=THREAD_ID_CHIMC)
@@ -1639,7 +1661,7 @@ def handle_callback(call):
     elif call.data == "decline_dismantle":
         bot.delete_message(call.message.chat.id, call.message.message_id)
 
-    elif call.data == "approve_change_treker":
+    elif call.data.split('|')[0] == "approve_change_treker":
         # Коли в чат падає заявка, то тільки адміністратор або власник може натиснути "approve"
         try:
             chat_member = bot.get_chat_member(call.message.chat.id, call.from_user.id)
@@ -1650,6 +1672,7 @@ def handle_callback(call):
             print(f"Ошибка: {e}")
             bot.send_message(call.message.chat.id, f"Помилка ролі", message_thread_id=THREAD_ORDER_ID)
             return
+        creator_id = call.data.split('|')[1]
 
         # отримуємо першу і другу форму
         json_match = re.findall(r'\{(.*?)\}', call.message.text, re.DOTALL)
@@ -1751,7 +1774,7 @@ def handle_callback(call):
         bot.delete_message(call.message.chat.id, old_message_id)
 
         # вирішуєм в який чат будем скидувать звіт
-        cluster = get_cluster_for_user_id(call.from_user.id)
+        cluster = get_cluster_for_user_id(creator_id)
         if cluster == "ЧІМК":
             bot.send_message(call.message.chat.id, formatted_message, parse_mode="MarkdownV2",
                              message_thread_id=THREAD_ID_CHIMC)
@@ -2154,7 +2177,7 @@ def dismantling_emei_equipment(message):
                 bot.send_message(message.chat.id,
                                  f"```\n {json_text} \n```",
                                      parse_mode = "MarkdownV2",
-                                 reply_markup=ask_approve_confirmation("confirm_dismantle"))
+                                 reply_markup=ask_approve_confirmation("confirm_dismantle",message.from_user.id))
 
                 user_state[message.from_user.id] = {
                     'wialon_json': myjson["wialon"]}  # Зберігаємо list_json в словник станів
